@@ -1,0 +1,72 @@
+// ===================== DOM =====================
+const masonryGrid = document.getElementById('masonryGrid');
+const noResults = document.getElementById('noResults');
+
+// ===================== GALLERY =====================
+function renderGallery(photosToRender, append = false) {
+    filteredPhotos = photosToRender;
+    if (!append) masonryGrid.innerHTML = '';
+
+    if (photosToRender.length === 0 && !append) {
+        noResults.style.display = 'block';
+        return;
+    }
+    noResults.style.display = 'none';
+
+    photosToRender.forEach((photo, i) => {
+        const item = document.createElement('div');
+        item.className = 'photo-item';
+        item.style.animationDelay = `${(append ? 0 : i) * 0.03}s`;
+        const isFav = favorites.includes(photo.id);
+        item.innerHTML = `
+            <img src="${photo.image}" alt="${photo.title}" loading="lazy">
+            <div class="photo-overlay">
+                <div class="photo-overlay-top">
+                    <div class="photo-actions">
+                        <button class="photo-action-btn fav-btn ${isFav ? 'fav-active' : ''}" data-id="${photo.id}" title="Favorite">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        </button>
+                        <button class="photo-action-btn download-btn" data-id="${photo.id}" title="Download">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="photo-overlay-bottom">
+                    <div class="photo-photographer">
+                        <div class="photo-avatar">${photo.artist.split(' ').map(n => n[0]).join('')}</div>
+                        <span class="photo-name">${photo.artist}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Click image to open lightbox
+        item.addEventListener('click', (e) => {
+            if (e.target.closest('.photo-action-btn')) return;
+            openLightbox(photosToRender.indexOf(photo));
+        });
+
+        // Favorite button
+        item.querySelector('.fav-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleFavorite(photo.id);
+        });
+
+        // Download button
+        item.querySelector('.download-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            simulateDownload(photo);
+        });
+
+        // Image error fallback
+        const img = item.querySelector('img');
+        img.onerror = function() {
+            this.outerHTML = `<div class="photo-fallback">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                <span>Image unavailable</span>
+            </div>`;
+        };
+
+        masonryGrid.appendChild(item);
+    });
+}
