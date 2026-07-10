@@ -621,9 +621,61 @@ app.get('/api/stats', (req, res) => {
     });
 });
 
+// ===================== VIDEO ALBUMS =====================
+
+let videoAlbums = [];
+
+// POST /api/video-albums — create a video album
+app.post('/api/video-albums', (req, res) => {
+    const { name, user } = req.body;
+    if (!name || !user) {
+        return res.status(400).json({ error: 'Name and user are required' });
+    }
+    const album = {
+        id: Date.now(),
+        name,
+        user,
+        videos: [],
+        createdAt: new Date().toISOString()
+    };
+    videoAlbums.push(album);
+    res.status(201).json({ album });
+});
+
+// GET /api/video-albums — list all video albums
+app.get('/api/video-albums', (req, res) => {
+    res.json({ albums: videoAlbums });
+});
+
+// GET /api/video-albums/:id — get a single video album
+app.get('/api/video-albums/:id', (req, res) => {
+    const album = videoAlbums.find(a => a.id == req.params.id);
+    if (!album) return res.status(404).json({ error: 'Album not found' });
+    res.json({ album });
+});
+
+// POST /api/video-albums/:id/videos — add video to album
+app.post('/api/video-albums/:id/videos', (req, res) => {
+    const album = videoAlbums.find(a => a.id == req.params.id);
+    if (!album) return res.status(404).json({ error: 'Album not found' });
+    const { videoId, title, artist, thumbnail, videoUrl } = req.body;
+    if (!videoId) return res.status(400).json({ error: 'videoId is required' });
+    if (!album.videos.find(v => v.videoId == videoId)) {
+        album.videos.push({ videoId, title: title || 'Video', artist: artist || 'Unknown', thumbnail: thumbnail || '', videoUrl: videoUrl || '' });
+    }
+    res.json({ album });
+});
+
+// DELETE /api/video-albums/:id/videos/:videoId — remove video from album
+app.delete('/api/video-albums/:id/videos/:videoId', (req, res) => {
+    const album = videoAlbums.find(a => a.id == req.params.id);
+    if (!album) return res.status(404).json({ error: 'Album not found' });
+    album.videos = album.videos.filter(v => v.videoId != req.params.videoId);
+    res.json({ album });
+});
+
 // ===================== EXPORT FOR NETLIFY / LOCAL =====================
 if (require.main === module) {
-    // Run locally with node server.js
     app.listen(PORT, () => {
         console.log(`Server running on http://localhost:${PORT}`);
         console.log(`Shared photos loaded: ${sharedPhotos.length}`);

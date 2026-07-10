@@ -124,6 +124,9 @@ const videoData = [
 const videoCategories = ['all', 'animation', 'nature', 'travel', 'technology'];
 let currentVideoCategory = 'all';
 
+// ===================== VIDEO ALBUMS STATE =====================
+let currentVideoAlbumView = null; // null = show all videos, object = show album
+
 function initVideos() {
     // Hook up the Videos nav link
     document.querySelectorAll('.nav-link').forEach(link => {
@@ -133,6 +136,39 @@ function initVideos() {
                 toggleVideos();
             });
         }
+    });
+
+    // Create video albums modal
+    const vidAlbumModal = document.createElement('div');
+    vidAlbumModal.className = 'vid-album-modal';
+    vidAlbumModal.id = 'vidAlbumModal';
+    vidAlbumModal.style.display = 'none';
+    vidAlbumModal.innerHTML = `
+        <div class="vid-album-overlay" id="vidAlbumOverlay"></div>
+        <div class="vid-album-panel" id="vidAlbumPanel">
+            <div class="vid-album-header">
+                <h3>📂 Video Albums</h3>
+                <button class="vid-album-close" id="vidAlbumClose">✕</button>
+            </div>
+            <div class="vid-album-body">
+                <div class="vid-album-create">
+                    <input type="text" id="vidAlbumNameInput" placeholder="New video album name..." maxlength="30">
+                    <button id="vidAlbumCreateBtn">Create</button>
+                </div>
+                <div class="vid-album-list" id="vidAlbumList">
+                    <p class="vid-album-empty">No video albums yet. Create your first one!</p>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(vidAlbumModal);
+
+    // Video album event listeners
+    document.getElementById('vidAlbumClose')?.addEventListener('click', closeVidAlbums);
+    document.getElementById('vidAlbumOverlay')?.addEventListener('click', closeVidAlbums);
+    document.getElementById('vidAlbumCreateBtn')?.addEventListener('click', createVidAlbum);
+    document.getElementById('vidAlbumNameInput')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') createVidAlbum();
     });
 
     // Create videos section
@@ -151,8 +187,12 @@ function initVideos() {
                     <h2>Videos</h2>
                 </div>
                 <p class="videos-subtitle">Free stock videos for your projects</p>
+                <div class="videos-actions">
+                    <button class="vid-album-toggle-btn" id="vidAlbumToggleBtn">📂 Video Albums</button>
+                    <button class="vid-back-btn" id="vidBackBtn" style="display:none;">← Back to Videos</button>
+                </div>
             </div>
-            <div class="videos-filter-bar">
+            <div class="videos-filter-bar" id="videosFilterBar">
                 ${videoCategories.map(cat => `
                     <button class="video-filter-btn ${cat === 'all' ? 'active' : ''}" data-category="${cat}">
                         ${cat === 'all' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1)}
@@ -167,16 +207,157 @@ function initVideos() {
 
     gallerySection.parentElement.insertBefore(videosSection, gallerySection);
 
+    // Video Albums toggle button and back button
+    document.getElementById('vidAlbumToggleBtn')?.addEventListener('click', openVidAlbums);
+    document.getElementById('vidBackBtn')?.addEventListener('click', backToVideos);
+
     // Video filter bar event listeners
     videosSection.querySelectorAll('.video-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             videosSection.querySelectorAll('.video-filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentVideoCategory = btn.dataset.category;
+            currentVideoAlbumView = null;
+            document.getElementById('vidBackBtn').style.display = 'none';
+            document.getElementById('vidAlbumToggleBtn').style.display = '';
             renderVideos();
         });
     });
 }
+
+// ===================== VIDEO ALBUM FUNCTIONS =====================
+
+function openVidAlbums() {
+    document.getElementById('vidAlbumModal').style.display = 'block';
+    document.getElementById('vidAlbumOverlay').classList.add('open');
+    document.getElementById('vidAlbumPanel').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    loadVidAlbumsList();
+}
+
+function closeVidAlbums() {
+    document.getElementById('vidAlbumModal').style.display = 'none';
+    document.getElementById('vidAlbumOverlay').classList.remove('open');
+    document.getElementById('vidAlbumPanel').classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+async function createVidAlbum() {
+    const input = document.getElementById('vidAlbumNameInput');
+    const name = input?.value.trim();
+    if (!name) return;
+    const user = currentUser?.name || 'Anonymous';
+    try {
+        const res = await fetch('/api/video-albums', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, user })
+        });
+        if (res.ok) {
+            input.value = '';
+            loadVidAlbumsList();
+            if (typeof showToast === 'function') showToast(`Video Album "${name}" created! 🎉`);
+        }
+    } catch (e) {
+        console.warn('Failed to create video album:', e);
+    }
+}
+
+async function loadVidAlbumsList() {
+    const list = document.getElementById('vidAlbumList');
+    if (!list) return;
+    try {
+        const res = await fetch('/api/video-albums');
+        const data = await res.json();
+
+        if (data.albums.length === 0) {
+            list.innerHTML = '<p class="vid-album-empty">No video albums yet. Create your first one!</p>';
+            return;
+        }
+
+        list.innerHTML = data.albums.map(album => `
+            <div class="vid-album-item" data-id="${album.id}">
+                <div class="vid-album-item-icon">📁</div>
+                <div class="vid-album-item-info" onclick="viewVidAlbum('${album.id}')">
+                    <strong>${escapeHtml(album.name)}</strong>
+                    <small>${album.videos.length} videos</small>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        console.warn('Failed to load video albums:', e);
+    }
+}
+
+async function viewVidAlbum(albumId) {
+    closeVidAlbums();
+    try {
+        const res = await fetch(`/api/video-albums/${albumId}`);
+        const data = await res.json();
+        if (data.album) {
+            currentVideoAlbumView = data.album;
+            document.getElementById('vidBackBtn').style.display = '';
+            document.getElementById('vidAlbumToggleBtn').style.display = 'none';
+            document.getElementById('videosFilterBar').style.display = 'none';
+            renderVidAlbumView(data.album);
+        }
+    } catch (e) {
+        console.warn('Failed to load album:', e);
+    }
+}
+
+function renderVidAlbumView(album) {
+    const grid = document.getElementById('videosGrid');
+    if (!grid) return;
+
+    if (!album.videos || album.videos.length === 0) {
+        grid.innerHTML = `<div class="videos-empty">📂 "${escapeHtml(album.name)}" is empty. <br>Click a video card to add videos!</div>`;
+        return;
+    }
+
+    grid.innerHTML = `
+        <div class="vid-album-view-header">
+            <h3>📁 ${escapeHtml(album.name)}</h3>
+            <span>${album.videos.length} videos</span>
+        </div>
+        ${album.videos.map(v => `
+            <div class="video-card" data-url="${escapeHtmlAttr(v.videoUrl)}" data-title="${escapeHtmlAttr(v.title)}">
+                <div class="video-thumbnail-wrapper">
+                    <img src="${v.thumbnail || ''}" alt="${v.title}" loading="lazy" class="video-thumbnail" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22320%22 height=%22180%22><rect fill=%22%23333%22 width=%22320%22 height=%22180%22/><text fill=%22%23999%22 x=%22160%22 y=%2290%22 text-anchor=%22middle%22>🎬</text></svg>'">
+                    <div class="video-play-overlay">
+                        <div class="video-play-btn">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="video-info">
+                    <h4 class="video-title">${escapeHtml(v.title)}</h4>
+                    <span class="video-artist">${escapeHtml(v.artist || '')}</span>
+                </div>
+            </div>
+        `).join('')}
+    `;
+
+    // Click to play
+    grid.querySelectorAll('.video-card').forEach(card => {
+        card.addEventListener('click', () => {
+            openVideoPlayer(card.dataset.url, card.dataset.title);
+        });
+    });
+}
+
+function backToVideos() {
+    currentVideoAlbumView = null;
+    document.getElementById('vidBackBtn').style.display = 'none';
+    document.getElementById('vidAlbumToggleBtn').style.display = '';
+    document.getElementById('videosFilterBar').style.display = '';
+    currentVideoCategory = 'all';
+    document.querySelectorAll('.video-filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.video-filter-btn[data-category="all"]')?.classList.add('active');
+    renderVideos();
+}
+
+// ===================== TOGGLE VIDEOS =====================
 
 function toggleVideos() {
     const videosSection = document.getElementById('videosSection');
@@ -189,7 +370,6 @@ function toggleVideos() {
     if (!videosSection) return;
     const isOpen = videosSection.style.display !== 'none';
 
-    // Close other sections
     if (explore) explore.style.display = 'none';
     if (dashboard) dashboard.style.display = 'none';
 
@@ -203,10 +383,13 @@ function toggleVideos() {
         gallery.style.display = 'none';
         if (hero) hero.style.display = 'none';
         if (filters) filters.style.display = 'none';
+        backToVideos();
         renderVideos();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 }
+
+// ===================== RENDER VIDEOS =====================
 
 function renderVideos() {
     const grid = document.getElementById('videosGrid');
@@ -223,7 +406,7 @@ function renderVideos() {
     }
 
     grid.innerHTML = filtered.map(video => `
-        <div class="video-card" data-id="${video.id}" data-url="${escapeHtmlAttr(video.videoUrl)}" data-title="${escapeHtmlAttr(video.title)}">
+        <div class="video-card" data-id="${video.id}" data-url="${escapeHtmlAttr(video.videoUrl)}" data-title="${escapeHtmlAttr(video.title)}" data-artist="${escapeHtmlAttr(video.artist)}" data-thumb="${escapeHtmlAttr(video.thumbnail)}">
             <div class="video-thumbnail-wrapper">
                 <img src="${video.thumbnail}" alt="${video.title}" loading="lazy" class="video-thumbnail">
                 <div class="video-play-overlay">
@@ -232,6 +415,7 @@ function renderVideos() {
                     </div>
                 </div>
                 <span class="video-duration-badge">${video.duration}</span>
+                <button class="video-add-album-btn" title="Add to Video Album">📂</button>
             </div>
             <div class="video-info">
                 <h4 class="video-title">${escapeHtml(video.title)}</h4>
@@ -243,16 +427,66 @@ function renderVideos() {
 
     // Click to open video player
     grid.querySelectorAll('.video-card').forEach(card => {
-        card.addEventListener('click', () => {
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.video-add-album-btn')) return;
             const url = card.dataset.url;
             const title = card.dataset.title;
             openVideoPlayer(url, title);
         });
+
+        // Add to album button
+        card.querySelector('.video-add-album-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const videoId = card.dataset.id;
+            const title = card.dataset.title;
+            const artist = card.dataset.artist;
+            const thumbnail = card.dataset.thumb;
+            const videoUrl = card.dataset.url;
+            showAddToVidAlbumPicker(videoId, title, artist, thumbnail, videoUrl);
+        });
     });
 }
 
+// ===================== ADD VIDEO TO ALBUM =====================
+
+async function showAddToVidAlbumPicker(videoId, title, artist, thumbnail, videoUrl) {
+    if (!currentUser) {
+        if (typeof showToast === 'function') showToast('Login to save videos to albums', 'error');
+        return;
+    }
+    try {
+        const res = await fetch('/api/video-albums');
+        const data = await res.json();
+
+        if (data.albums.length === 0) {
+            if (typeof showToast === 'function') showToast('Create a video album first!', 'error');
+            return;
+        }
+
+        const albumNames = data.albums.map((a, i) => `${i + 1}. ${a.name} (${a.videos.length} videos)`).join('\n');
+        const choice = prompt(`Add to which Video Album?\n\n${albumNames}\n\nEnter number (1-${data.albums.length}):`);
+        if (!choice) return;
+
+        const idx = parseInt(choice) - 1;
+        if (idx >= 0 && idx < data.albums.length) {
+            const album = data.albums[idx];
+            const addRes = await fetch(`/api/video-albums/${album.id}/videos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ videoId: String(videoId), title, artist, thumbnail, videoUrl })
+            });
+            if (addRes.ok) {
+                if (typeof showToast === 'function') showToast(`Added to "${album.name}" 📂`);
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to add to album:', e);
+    }
+}
+
+// ===================== VIDEO PLAYER =====================
+
 function openVideoPlayer(videoUrl, title) {
-    // Remove any existing player
     const existing = document.getElementById('videoPlayerModal');
     if (existing) existing.remove();
 
@@ -277,7 +511,6 @@ function openVideoPlayer(videoUrl, title) {
     document.body.appendChild(modal);
 
     modal.style.display = 'block';
-    // Trigger animation
     requestAnimationFrame(() => {
         modal.querySelector('.video-player-overlay').classList.add('open');
         modal.querySelector('.video-player-content').classList.add('open');
@@ -285,7 +518,6 @@ function openVideoPlayer(videoUrl, title) {
 
     document.body.style.overflow = 'hidden';
 
-    // Cleanup on close (define before event listeners use it)
     const closeVideoPlayer = () => {
         const video = document.getElementById('videoPlayer');
         if (video) video.pause();
@@ -298,11 +530,9 @@ function openVideoPlayer(videoUrl, title) {
         document.removeEventListener('keydown', escHandler);
     };
 
-    // Close handlers
     document.getElementById('videoPlayerClose').addEventListener('click', closeVideoPlayer);
     document.getElementById('videoPlayerOverlay').addEventListener('click', closeVideoPlayer);
 
-    // Keyboard escape
     const escHandler = (e) => {
         if (e.key === 'Escape') {
             closeVideoPlayer();
@@ -311,6 +541,8 @@ function openVideoPlayer(videoUrl, title) {
     };
     document.addEventListener('keydown', escHandler);
 }
+
+// ===================== UTILITY =====================
 
 function escapeHtml(text) {
     const div = document.createElement('div');

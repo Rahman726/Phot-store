@@ -3654,6 +3654,208 @@ img { display: block; max-width: 100%; }
     font-size: 1.1rem;
 }
 
+/* ===================== VIDEO ALBUMS ===================== */
+.vid-album-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+}
+
+.vid-album-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: var(--transition);
+}
+.vid-album-overlay.open { opacity: 1; pointer-events: all; }
+
+.vid-album-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 380px;
+    max-width: 90vw;
+    background: var(--bg-primary);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+}
+.vid-album-panel.open { transform: translateX(0); }
+
+.vid-album-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+}
+.vid-album-header h3 { font-size: 1.05rem; font-weight: 600; }
+
+.vid-album-close {
+    width: 32px; height: 32px;
+    border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-secondary);
+    cursor: pointer; transition: var(--transition);
+    border: none; background: none;
+}
+.vid-album-close:hover { background: var(--bg-secondary); }
+
+.vid-album-body {
+    flex: 1;
+    padding: 16px 20px;
+    overflow-y: auto;
+}
+
+.vid-album-create {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+.vid-album-create input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    font-family: var(--font);
+    outline: none;
+    transition: var(--transition);
+}
+.vid-album-create input:focus { border-color: var(--accent); }
+.vid-album-create button {
+    padding: 10px 16px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.vid-album-create button:hover { background: var(--accent-hover); }
+
+.vid-album-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.vid-album-empty {
+    color: var(--text-light);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.vid-album-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.vid-album-item:hover { background: var(--bg-secondary); }
+.vid-album-item-icon { font-size: 1.5rem; }
+.vid-album-item-info { flex: 1; }
+.vid-album-item-info strong { display: block; font-size: 0.9rem; }
+.vid-album-item-info small { color: var(--text-secondary); font-size: 0.78rem; }
+
+/* Video album toggle button and back button */
+.videos-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.vid-album-toggle-btn {
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.vid-album-toggle-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+}
+
+.vid-back-btn {
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.vid-back-btn:hover {
+    border-color: #e74c3c;
+    color: #e74c3c;
+    background: rgba(231,76,60,0.08);
+}
+
+/* Video album view header in grid */
+.vid-album-view-header {
+    grid-column: 1 / -1;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+}
+.vid-album-view-header h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+.vid-album-view-header span {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+/* Add to album button on video cards */
+.video-add-album-btn {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 5;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    font-size: 0.9rem;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(4px);
+}
+.video-card:hover .video-add-album-btn {
+    opacity: 1;
+}
+.video-add-album-btn:hover {
+    background: var(--accent);
+    transform: scale(1.1);
+}
+
 /* ===================== HEATMAP ===================== */
 .heatmap-card {
     overflow: hidden;
