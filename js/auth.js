@@ -9,7 +9,10 @@ const loginForm = document.getElementById('loginForm');
 const signupForm = document.getElementById('signupForm');
 
 // ===================== AUTH =====================
-const API_BASE = 'http://localhost:3000/api';
+// Auto-detect API base — works on localhost (node server.js) AND Railway
+const API_BASE = window.location.protocol === 'file:'
+  ? 'http://localhost:3000/api'
+  : '/api';
 let currentUser = JSON.parse(localStorage.getItem('photoStoreUser') || 'null');
 let authToken = localStorage.getItem('photoStoreToken') || '';
 
