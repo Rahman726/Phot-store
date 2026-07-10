@@ -1077,6 +1077,13 @@ img { display: block; max-width: 100%; }
     background: var(--accent-hover);
 }
 
+.auth-note {
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-light);
+    margin-top: 8px;
+}
+
 .auth-forgot {
     text-align: center;
     font-size: 0.85rem;

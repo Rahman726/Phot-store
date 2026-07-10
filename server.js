@@ -32,24 +32,25 @@ const generateToken = (user) => {
 
 // ===================== AUTH ROUTES =====================
 
-// Signup
+// Signup (only name needed — auto-generates email & password)
 app.post('/api/auth/signup', async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name } = req.body;
 
-        // Check if user already exists
-        const existingUser = users.find(u => u.email === email);
-        if (existingUser) {
-            return res.status(400).json({ error: 'User already exists' });
+        if (!name || !name.trim()) {
+            return res.status(400).json({ error: 'Name is required' });
         }
 
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
+        // Auto-generate unique email and password
+        const randomId = Date.now() + Math.random().toString(36).slice(2, 6);
+        const email = `user-${randomId}@photostore.app`;
+        const generatedPassword = Math.random().toString(36).slice(2, 12);
+        const hashedPassword = await bcrypt.hash(generatedPassword, 10);
 
         // Create user
         const user = {
             id: Date.now(),
-            name,
+            name: name.trim(),
             email,
             password: hashedPassword,
             createdAt: new Date().toISOString()
@@ -61,7 +62,7 @@ app.post('/api/auth/signup', async (req, res) => {
         const token = generateToken(user);
 
         res.status(201).json({
-            message: 'User created successfully',
+            message: 'Welcome!',
             token,
             user: {
                 id: user.id,
@@ -70,6 +71,7 @@ app.post('/api/auth/signup', async (req, res) => {
             }
         });
     } catch (error) {
+        console.error('Signup error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });

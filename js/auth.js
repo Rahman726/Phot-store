@@ -168,9 +168,11 @@ async function handleLogin(e) {
 
 async function handleSignup(e) {
     e.preventDefault();
-    const name = document.getElementById('signupName').value;
-    const email = document.getElementById('signupEmail').value;
-    const password = document.getElementById('signupPassword').value;
+    const name = document.getElementById('signupName').value.trim();
+    if (!name) {
+        showToast('Please enter your name!', 'error');
+        return;
+    }
 
     try {
         const response = await fetch(`${API_BASE}/auth/signup`, {
@@ -178,7 +180,7 @@ async function handleSignup(e) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ name, email, password })
+            body: JSON.stringify({ name })
         });
 
         const data = await response.json();
