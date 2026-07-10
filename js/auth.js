@@ -78,14 +78,14 @@ async function verifyToken() {
 }
 
 function showAuthGate() {
-    authGate.classList.add('active');
+    if (authGate) authGate.classList.add('active');
     authModal.classList.add('open');
     authOverlay.classList.add('open');
     document.body.style.overflow = 'hidden';
 }
 
 function hideAuthGate() {
-    authGate.classList.remove('active');
+    if (authGate) authGate.classList.remove('active');
     authModal.classList.remove('open');
     authOverlay.classList.remove('open');
     document.body.style.overflow = '';

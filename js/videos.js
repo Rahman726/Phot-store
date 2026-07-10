@@ -170,9 +170,9 @@ function initVideos() {
         if (e.key === 'Enter') createVidAlbum();
     });
 
-    // Create videos section
-    const gallerySection = document.querySelector('.gallery-section');
-    if (!gallerySection) return;
+    // Create videos section — insert after the hero-mini
+    const heroMini = document.getElementById('heroMini');
+    const insertAfter = heroMini || document.querySelector('.navbar')?.nextElementSibling || document.body;
 
     const videosSection = document.createElement('section');
     videosSection.className = 'videos-section';
@@ -204,7 +204,12 @@ function initVideos() {
         </div>
     `;
 
-    gallerySection.parentElement.insertBefore(videosSection, gallerySection);
+    // Insert videos section after hero-mini
+    if (insertAfter && insertAfter.parentElement) {
+        insertAfter.parentElement.insertBefore(videosSection, insertAfter.nextElementSibling);
+    } else {
+        document.body.appendChild(videosSection);
+    }
 
     // Video Albums toggle button and back button
     document.getElementById('vidAlbumToggleBtn')?.addEventListener('click', openVidAlbums);
@@ -360,28 +365,17 @@ function backToVideos() {
 
 function toggleVideos() {
     const videosSection = document.getElementById('videosSection');
-    const gallery = document.querySelector('.gallery-section');
-    const hero = document.getElementById('hero');
-    const filters = document.querySelector('.filters-section');
-    const explore = document.getElementById('exploreSection');
-    const dashboard = document.getElementById('dashboardSection');
+    const heroMini = document.getElementById('heroMini');
 
     if (!videosSection) return;
     const isOpen = videosSection.style.display !== 'none';
 
-    if (explore) explore.style.display = 'none';
-    if (dashboard) dashboard.style.display = 'none';
-
     if (isOpen) {
         videosSection.style.display = 'none';
-        gallery.style.display = '';
-        if (hero) hero.style.display = '';
-        if (filters) filters.style.display = '';
+        if (heroMini) heroMini.style.display = '';
     } else {
         videosSection.style.display = 'block';
-        gallery.style.display = 'none';
-        if (hero) hero.style.display = 'none';
-        if (filters) filters.style.display = 'none';
+        if (heroMini) heroMini.style.display = 'none';
         backToVideos();
         renderVideos();
         window.scrollTo({ top: 0, behavior: 'smooth' });
