@@ -1,20 +1,11 @@
 // ===================== USER ALBUMS =====================
 
 function initAlbums() {
-    // Add albums button to navbar
-    const navActions = document.querySelector('.nav-actions');
-    if (!navActions) return;
-    
-    const albumsBtn = document.createElement('button');
-    albumsBtn.className = 'nav-albums-btn';
-    albumsBtn.id = 'albumsBtn';
-    albumsBtn.innerHTML = '📂 Albums';
-    navActions.insertBefore(albumsBtn, navActions.querySelector('.nav-upload-btn'));
-    
-    // Create albums modal
+    // Create albums modal first (before any early returns)
     const albumsModal = document.createElement('div');
     albumsModal.className = 'albums-modal';
     albumsModal.id = 'albumsModal';
+    albumsModal.style.display = 'none';
     albumsModal.innerHTML = `
         <div class="albums-overlay" id="albumsOverlay"></div>
         <div class="albums-panel" id="albumsPanel">
@@ -35,14 +26,43 @@ function initAlbums() {
     `;
     document.body.appendChild(albumsModal);
     
-    // Event listeners
-    albumsBtn.addEventListener('click', openAlbums);
+    // Event listeners for modal
     document.getElementById('albumsClose')?.addEventListener('click', closeAlbums);
     document.getElementById('albumsOverlay')?.addEventListener('click', closeAlbums);
     document.getElementById('albumCreateBtn')?.addEventListener('click', createAlbum);
     document.getElementById('albumNameInput')?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') createAlbum();
     });
+
+    // Hook Collections nav link to open albums modal
+    document.querySelectorAll('.nav-link').forEach(link => {
+        if (link.textContent.trim() === 'Collections') {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Close other full-page sections
+                const explore = document.getElementById('exploreSection');
+                const videos = document.getElementById('videosSection');
+                const dash = document.getElementById('dashboardSection');
+                if (explore) explore.style.display = 'none';
+                if (videos) videos.style.display = 'none';
+                if (dash) dash.style.display = 'none';
+                openAlbums();
+            });
+        }
+    });
+
+    // Add albums button to navbar (optional, may not exist on mobile)
+    const navActions = document.querySelector('.nav-actions');
+    if (navActions) {
+        const albumsBtn = document.createElement('button');
+        albumsBtn.className = 'nav-albums-btn';
+        albumsBtn.id = 'albumsBtn';
+        albumsBtn.innerHTML = '📂 Albums';
+        navActions.insertBefore(albumsBtn, navActions.querySelector('.nav-upload-btn'));
+        albumsBtn.addEventListener('click', openAlbums);
+    }
+    
+
     
     // Add "Add to Album" button in lightbox
     const lightboxActions = document.querySelector('.lightbox-actions');

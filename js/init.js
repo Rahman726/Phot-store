@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (e) {
         console.warn('Failed to load shared photos:', e);
+        if (typeof showToast === 'function') {
+            showToast('⚠️ Server not connected. Run "start-app.bat" or "node server.js" to enable Login, Signup, AI, and Upload features.');
+        }
     }
     
     // Start infinite scroll for unlimited photos (server/AI photos merge at top)
@@ -30,6 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (typeof initSlideshow === 'function') initSlideshow();
     if (typeof initEditor === 'function') initEditor();
     if (typeof initExplore === 'function') initExplore();
+    if (typeof initVideos === 'function') initVideos();
     if (typeof initAlbums === 'function') initAlbums();
     if (typeof initDashboard === 'function') initDashboard();
     if (typeof initTags === 'function') initTags();

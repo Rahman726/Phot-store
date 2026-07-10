@@ -155,7 +155,11 @@ async function handleLogin(e) {
         }
     } catch (error) {
         console.error('Login error:', error);
-        showToast('Server error. Please try again.');
+        if (error instanceof TypeError) {
+            showToast('⚠️ Server not running! Close this window, run start-app.bat, and try again.');
+        } else {
+            showToast('⚠️ Server error: ' + error.message);
+        }
     }
 }
 
@@ -194,7 +198,11 @@ async function handleSignup(e) {
         }
     } catch (error) {
         console.error('Signup error:', error);
-        showToast('Server error. Please try again.');
+        if (error instanceof TypeError) {
+            showToast('⚠️ Server not running! Close this window, run start-app.bat, and try again.');
+        } else {
+            showToast('⚠️ Server error: ' + error.message);
+        }
     }
 }
 

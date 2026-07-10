@@ -182,7 +182,11 @@ uploadForm.addEventListener('submit', async (e) => {
         }
     } catch (error) {
         console.error('Upload error:', error);
-        showToast('Failed to upload photo. Server error.', 'error');
+        if (error instanceof TypeError) {
+            showToast('⚠️ Server not running! Start with: node server.js, then try again.', 'error');
+        } else {
+            showToast('⚠️ Upload failed: ' + error.message, 'error');
+        }
     } finally {
         uploadSubmitBtn.disabled = false;
         uploadSubmitBtn.classList.remove('loading');

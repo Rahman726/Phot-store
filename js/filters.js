@@ -11,7 +11,8 @@ function initFilters() {
 }
 
 function applyFilters() {
-    let result = photos;
+    // Combine server photos AND infinite scroll photos so uploads don't lose picsum photos
+    let result = [...photos, ...(window.infinitePhotos || [])];
     if (currentFilter !== 'all') {
         result = result.filter(p => p.category === currentFilter);
     }

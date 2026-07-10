@@ -42,6 +42,8 @@ function randomItem(arr) {
 let generatedCount = 0;
 let isLoadingMore = false;
 let infinitePage = 0;
+// Track ALL generated infinite scroll photos (global so filters.js can access)
+window.infinitePhotos = [];
 const BATCH_SIZE = 24;
 const INFINITE_BASE_ID = 10000;
 
@@ -49,7 +51,8 @@ const INFINITE_BASE_ID = 10000;
 function generatePhotoBatch(count) {
     const batch = [];
     for (let i = 0; i < count; i++) {
-        const picsumId = ((generatedCount + i + 1) % 650) + 58; // Start from 58 to avoid overlapping with server photos (10-57)
+        // Stay within picsum-safe range (58-697) but randomize per page to avoid quick duplicates
+        const picsumId = ((generatedCount + i + (infinitePage * 53)) % 640) + 58;
         const aspect = aspects[(generatedCount + i) % aspects.length];
         const category = categories[(generatedCount + i) % categories.length];
         const artist = artists[(generatedCount + i) % artists.length];
@@ -83,6 +86,7 @@ async function loadMoreInfinite() {
     await new Promise(r => setTimeout(r, 300));
 
     const newPhotos = generatePhotoBatch(BATCH_SIZE);
+    window.infinitePhotos = window.infinitePhotos.concat(newPhotos); // Track all generated photos
     renderGallery(newPhotos, true);
     infinitePage++;
 
@@ -94,6 +98,8 @@ async function loadMoreInfinite() {
 function initInfiniteScroll() {
     // Generate initial batch and merge with any server/AI photos (they stay at top)
     const initialPhotos = generatePhotoBatch(BATCH_SIZE);
+    // Track these for applyFilters() so uploads don't lose infinite scroll photos
+    window.infinitePhotos = initialPhotos.slice();
     const allInitial = [...photos, ...initialPhotos];
     renderGallery(allInitial);
     infinitePage = 1;
