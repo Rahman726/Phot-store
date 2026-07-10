@@ -159,7 +159,7 @@ async function handleLogin(e) {
     } catch (error) {
         console.error('Login error:', error);
         if (error instanceof TypeError) {
-            showToast('⚠️ Server not running! Close this window, run start-app.bat, and try again.');
+            showToast('⚠️ Server error. Make sure the backend is running.');
         } else {
             showToast('⚠️ Server error: ' + error.message);
         }
@@ -202,7 +202,7 @@ async function handleSignup(e) {
     } catch (error) {
         console.error('Signup error:', error);
         if (error instanceof TypeError) {
-            showToast('⚠️ Server not running! Close this window, run start-app.bat, and try again.');
+            showToast('⚠️ Server error. Make sure the backend is running.');
         } else {
             showToast('⚠️ Server error: ' + error.message);
         }

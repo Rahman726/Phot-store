@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
         console.warn('Failed to load shared photos:', e);
         if (typeof showToast === 'function') {
-            showToast('⚠️ Server not connected. Run "start-app.bat" or "node server.js" to enable Login, Signup, AI, and Upload features.');
+            showToast('⚠️ Server not connected. Run "node server.js" locally or deploy on Netlify to enable Login, Signup, AI, and Upload.');
         }
     }
     

@@ -621,8 +621,13 @@ app.get('/api/stats', (req, res) => {
     });
 });
 
-// ===================== START SERVER =====================
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Shared photos loaded: ${sharedPhotos.length}`);
-});
+// ===================== EXPORT FOR NETLIFY / LOCAL =====================
+if (require.main === module) {
+    // Run locally with node server.js
+    app.listen(PORT, () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+        console.log(`Shared photos loaded: ${sharedPhotos.length}`);
+    });
+}
+
+module.exports = app;
