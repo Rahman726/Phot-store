@@ -129,14 +129,13 @@ let currentVideoAlbumView = null; // null = show all videos, object = show album
 
 function initVideos() {
     // Hook up the Videos nav link
-    document.querySelectorAll('.nav-link').forEach(link => {
-        if (link.textContent.trim() === 'Videos') {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                toggleVideos();
-            });
-        }
-    });
+    const videosBtn = document.getElementById('navVideosBtn');
+    if (videosBtn) {
+        videosBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleVideos();
+        });
+    }
 
     // Create video albums modal
     const vidAlbumModal = document.createElement('div');
