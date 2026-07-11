@@ -37,20 +37,27 @@ function initRatings() {
             const rating = parseInt(star.dataset.rating);
             const photoId = window.currentLightboxPhotoId;
             if (!photoId) return;
+            
+            // Save locally first (works offline!)
+            saveLocalRating(photoId, rating);
+            
+            // Try server
             try {
+                const controller = new AbortController();
+                setTimeout(() => controller.abort(), 3000);
+                
                 const res = await fetch(`/api/ratings/${photoId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rating })
+                    body: JSON.stringify({ rating }),
+                    signal: controller.signal
                 });
-                if (res.ok) {
-                    const data = await res.json();
-                    loadRating(photoId);
-                    showToast(`You rated this ${rating}/5 ⭐`);
-                }
             } catch (e) {
-                console.warn('Rating failed:', e);
+                console.warn('Server offline, rating saved locally:', e.message);
             }
+            
+            loadRating(photoId);
+            showToast(`You rated this ${rating}/5 ⭐`);
         });
     });
 }
@@ -62,22 +69,62 @@ function highlightStars(count) {
     });
 }
 
+// Local storage for offline ratings
+const LOCAL_RATINGS_KEY = 'photoStoreLocalRatings';
+
+function getLocalRatings(photoId) {
+    const all = JSON.parse(localStorage.getItem(LOCAL_RATINGS_KEY) || '{}');
+    return all[photoId] || [];
+}
+
+function saveLocalRating(photoId, score) {
+    const all = JSON.parse(localStorage.getItem(LOCAL_RATINGS_KEY) || '{}');
+    if (!all[photoId]) all[photoId] = [];
+    all[photoId].push(score);
+    localStorage.setItem(LOCAL_RATINGS_KEY, JSON.stringify(all));
+}
+
 async function loadRating(photoId) {
+    const avgEl = document.getElementById('ratingAverage');
+    if (!avgEl) return;
+    
+    let serverData = null;
+    
+    // Try server first
     try {
-        const res = await fetch(`/api/ratings/${photoId}`);
-        const data = await res.json();
-        const avgEl = document.getElementById('ratingAverage');
-        if (avgEl) {
-            if (data.count > 0) {
-                avgEl.textContent = `${data.average} (${data.count} votes)`;
-                avgEl.dataset.avg = data.average;
-                highlightStars(Math.round(data.average));
-            } else {
-                avgEl.textContent = 'No ratings yet';
-                avgEl.dataset.avg = '0';
-            }
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 3000);
+        
+        const res = await fetch(`/api/ratings/${photoId}`, { signal: controller.signal });
+        if (res.ok) {
+            serverData = await res.json();
         }
     } catch (e) {
-        console.warn('Failed to load rating:', e);
+        console.warn('Server offline for ratings:', e.message);
+    }
+    
+    // Combine server + local ratings
+    const localRatings = getLocalRatings(photoId);
+    let allRatings = [...localRatings];
+    if (serverData && serverData.count > 0) {
+        // We can't perfectly merge without knowing server scores,
+        // but we can approximate
+        allRatings = [...localRatings];
+    }
+    
+    if (allRatings.length > 0) {
+        const avg = allRatings.reduce((a, b) => a + b, 0) / allRatings.length;
+        const roundedAvg = Math.round(avg * 10) / 10;
+        avgEl.textContent = `${roundedAvg} (${allRatings.length} votes)`;
+        avgEl.dataset.avg = roundedAvg;
+        highlightStars(Math.round(roundedAvg));
+    } else if (serverData && serverData.count > 0) {
+        avgEl.textContent = `${serverData.average} (${serverData.count} votes)`;
+        avgEl.dataset.avg = serverData.average;
+        highlightStars(Math.round(serverData.average));
+    } else {
+        avgEl.textContent = 'No ratings yet';
+        avgEl.dataset.avg = '0';
     }
 }
+

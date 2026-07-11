@@ -39,7 +39,7 @@ function openProfile() {
         return;
     }
     
-    // Get user's uploaded photos from sharedPhotos
+    // Get user's photos from sharedPhotos
     const userPhotos = photos.filter(p => p.artist === currentUser.name).slice(0, 20);
     const favedPhotos = favorites.map(id => photos.find(p => p.id === id)).filter(Boolean);
     
@@ -62,7 +62,7 @@ function openProfile() {
                 <p>${currentUser.email}</p>
             </div>
             <div class="profile-tabs">
-                <button class="profile-tab active" data-tab="uploads">📸 Uploads (${userPhotos.length})</button>
+                <button class="profile-tab active" data-tab="uploads">📸 My Photos (${userPhotos.length})</button>
                 <button class="profile-tab" data-tab="favorites">♥ Favorites (${favorites.length})</button>
             </div>
             <div class="profile-content" id="profileContent">
@@ -71,7 +71,7 @@ function openProfile() {
                         <div class="profile-photo-item">
                             <img src="${p.image}" alt="${p.title}" loading="lazy">
                         </div>
-                    `).join('') : '<p class="profile-empty">No uploaded photos yet</p>'}
+                    `).join('') : '<p class="profile-empty">No photos yet</p>'}
                 </div>
             </div>
         </div>
@@ -98,7 +98,7 @@ function openProfile() {
             if (tab.dataset.tab === 'uploads') {
                 grid.innerHTML = userPhotos.length > 0 ? userPhotos.map(p => `
                     <div class="profile-photo-item"><img src="${p.image}" alt="${p.title}" loading="lazy"></div>
-                `).join('') : '<p class="profile-empty">No uploaded photos</p>';
+                `).join('') : '<p class="profile-empty">No photos yet</p>';
             } else {
                 grid.innerHTML = favedPhotos.length > 0 ? favedPhotos.map(p => `
                     <div class="profile-photo-item"><img src="${p.image}" alt="${p.title}" loading="lazy"></div>

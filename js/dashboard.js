@@ -97,36 +97,54 @@ function toggleDashboard() {
 }
 
 async function loadDashboard() {
+    // Local stats (always available)
+    const localStats = {
+        totalPhotos: photos.length + (window.infinitePhotos?.length || 0),
+        totalFavorites: favorites.length,
+        totalLocalAlbums: JSON.parse(localStorage.getItem('photoStoreLocalAlbums') || '[]').length,
+        totalLocalComments: Object.values(JSON.parse(localStorage.getItem('photoStoreLocalComments') || '{}')).reduce((a, b) => a + b.length, 0),
+        totalLocalRatings: Object.values(JSON.parse(localStorage.getItem('photoStoreLocalRatings') || '{}')).reduce((a, b) => a + b.length, 0)
+    };
+    
+    let stats = null;
+    
+    // Try server for additional stats
     try {
-        const res = await fetch('/api/stats');
-        const stats = await res.json();
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 3000);
         
-        document.getElementById('dashPhotos').textContent = stats.totalPhotos || 0;
-        document.getElementById('dashViews').textContent = stats.totalViews || 0;
-        document.getElementById('dashRatings').textContent = stats.totalRatings || 0;
-        document.getElementById('dashComments').textContent = stats.totalComments || 0;
-        document.getElementById('dashAlbums').textContent = stats.totalAlbums || 0;
-        document.getElementById('dashFavorites').textContent = favorites.length || 0;
-        
-        // Recent activity placeholder
-        const activity = document.getElementById('dashActivity');
-        if (activity) {
-            activity.innerHTML = `
-                <div class="activity-item">
-                    <span>📸</span>
-                    <span>${stats.totalPhotos} photos in gallery</span>
-                </div>
-                <div class="activity-item">
-                    <span>♥</span>
-                    <span>${favorites.length} favorites saved</span>
-                </div>
-                <div class="activity-item">
-                    <span>⭐</span>
-                    <span>${stats.totalRatings} ratings given</span>
-                </div>
-            `;
+        const res = await fetch('/api/stats', { signal: controller.signal });
+        if (res.ok) {
+            stats = await res.json();
         }
     } catch (e) {
-        console.warn('Failed to load dashboard:', e);
+        console.warn('Server offline for dashboard:', e.message);
+    }
+    
+    // Combine server + local stats
+    document.getElementById('dashPhotos').textContent = stats?.totalPhotos || localStats.totalPhotos;
+    document.getElementById('dashViews').textContent = stats?.totalViews || '—';
+    document.getElementById('dashRatings').textContent = stats?.totalRatings || localStats.totalLocalRatings || '—';
+    document.getElementById('dashComments').textContent = stats?.totalComments || localStats.totalLocalComments || '—';
+    document.getElementById('dashAlbums').textContent = stats?.totalAlbums || localStats.totalLocalAlbums || '—';
+    document.getElementById('dashFavorites').textContent = favorites.length || '—';
+    
+    // Recent activity
+    const activity = document.getElementById('dashActivity');
+    if (activity) {
+        const items = [];
+        items.push(`<div class="activity-item"><span>📸</span><span>${localStats.totalPhotos} photos in gallery</span></div>`);
+        items.push(`<div class="activity-item"><span>♥</span><span>${favorites.length} favorites saved</span></div>`);
+        if (localStats.totalLocalAlbums > 0) {
+            items.push(`<div class="activity-item"><span>📂</span><span>${localStats.totalLocalAlbums} albums created</span></div>`);
+        }
+        if (localStats.totalLocalComments > 0) {
+            items.push(`<div class="activity-item"><span>💬</span><span>${localStats.totalLocalComments} comments posted</span></div>`);
+        }
+        if (stats?.totalViews > 0) {
+            items.push(`<div class="activity-item"><span>👁️</span><span>${stats.totalViews} total views</span></div>`);
+        }
+        
+        activity.innerHTML = items.join('');
     }
 }

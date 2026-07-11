@@ -13,7 +13,6 @@ const translations = {
         all: 'All',
         aiGenerated: '✨ AI Generated',
         noresults: 'No photos found',
-        uploadTitle: 'Upload Your Photo',
         createTitle: 'Create Your Own Picture',
         favorites: 'My Favorites',
         noFavs: 'No favorites yet',
@@ -39,7 +38,6 @@ const translations = {
         all: 'सभी',
         aiGenerated: '✨ AI जनरेटेड',
         noresults: 'कोई फोटो नहीं मिली',
-        uploadTitle: 'अपनी फोटो अपलोड करें',
         createTitle: 'अपनी खुद की तस्वीर बनाएं',
         favorites: 'पसंदीदा',
         noFavs: 'अभी तक कोई पसंदीदा नहीं',
@@ -65,7 +63,6 @@ const translations = {
         all: 'تمام',
         aiGenerated: '✨ AI تخلیق کردہ',
         noresults: 'کوئی فوٹو نہیں ملا',
-        uploadTitle: 'اپنی فوٹو اپ لوڈ کریں',
         createTitle: 'اپنی خود کی تصویر بنائیں',
         favorites: 'پسندیدہ',
         noFavs: 'ابھی تک کوئی پسندیدہ نہیں',
@@ -145,9 +142,6 @@ function applyTranslations() {
     
     const loginBtn = document.getElementById('loginBtn');
     if (loginBtn && !currentUser) loginBtn.textContent = t('login');
-    
-    const uploadBtn = document.querySelector('.nav-upload-btn');
-    if (uploadBtn) uploadBtn.textContent = t('submit');
     
     const aiBtn = document.getElementById('aiGenerateBtn');
     if (aiBtn) aiBtn.textContent = t('aiGenerate');

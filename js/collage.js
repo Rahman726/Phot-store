@@ -10,7 +10,7 @@ function initCollage() {
     collageBtn.id = 'collageBtn';
     collageBtn.textContent = '🖼️ Collage';
     
-    navActions.insertBefore(collageBtn, navActions.querySelector('.nav-upload-btn'));
+    navActions.insertBefore(collageBtn, navActions.querySelector('.nav-fav-toggle'));
     
     // Create collage modal
     const modal = document.createElement('div');

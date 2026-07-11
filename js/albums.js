@@ -58,7 +58,7 @@ function initAlbums() {
         albumsBtn.className = 'nav-albums-btn';
         albumsBtn.id = 'albumsBtn';
         albumsBtn.innerHTML = '📂 Albums';
-        navActions.insertBefore(albumsBtn, navActions.querySelector('.nav-upload-btn'));
+        navActions.insertBefore(albumsBtn, navActions.querySelector('.nav-fav-toggle'));
         albumsBtn.addEventListener('click', openAlbums);
     }
     
@@ -91,89 +91,180 @@ function closeAlbums() {
     document.body.style.overflow = '';
 }
 
+// Local storage for offline albums
+const LOCAL_ALBUMS_KEY = 'photoStoreLocalAlbums';
+
+function getLocalAlbums() {
+    return JSON.parse(localStorage.getItem(LOCAL_ALBUMS_KEY) || '[]');
+}
+
+function saveLocalAlbums(albums) {
+    localStorage.setItem(LOCAL_ALBUMS_KEY, JSON.stringify(albums));
+}
+
 async function createAlbum() {
     const input = document.getElementById('albumNameInput');
     const name = input?.value.trim();
     if (!name) return;
     
     const user = currentUser?.name || 'Anonymous';
+    
+    const newAlbum = {
+        id: Date.now(),
+        name,
+        user,
+        photos: [],
+        createdAt: new Date().toISOString()
+    };
+    
+    // Try server first
     try {
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 3000);
+        
         const res = await fetch('/api/albums', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, user })
+            body: JSON.stringify({ name, user }),
+            signal: controller.signal
         });
         if (res.ok) {
             input.value = '';
             loadAlbumsList();
             showToast(`Album "${name}" created! 🎉`);
+            return;
         }
     } catch (e) {
-        console.warn('Failed to create album:', e);
+        console.warn('Server offline, saving album locally:', e.message);
     }
+    
+    // Save locally (offline fallback)
+    const localAlbums = getLocalAlbums();
+    localAlbums.unshift(newAlbum);
+    saveLocalAlbums(localAlbums);
+    input.value = '';
+    loadAlbumsList();
+    showToast(`Album "${name}" created (offline)! 🎉`);
 }
 
 async function loadAlbumsList() {
     const list = document.getElementById('albumsList');
     if (!list) return;
+    
+    let serverAlbums = [];
+    
+    // Try server first
     try {
-        const res = await fetch('/api/albums');
-        const data = await res.json();
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 3000);
         
-        if (data.albums.length === 0) {
-            list.innerHTML = '<p class="albums-empty">No albums yet. Create your first one!</p>';
-            return;
+        const res = await fetch('/api/albums', { signal: controller.signal });
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.albums)) {
+                serverAlbums = data.albums;
+            }
         }
-        
-        list.innerHTML = data.albums.map(album => `
-            <div class="album-item" data-id="${album.id}">
-                <div class="album-icon">📁</div>
-                <div class="album-info">
-                    <strong>${escapeHtml(album.name)}</strong>
-                    <small>${album.photos.length} photos</small>
-                </div>
-            </div>
-        `).join('');
     } catch (e) {
-        console.warn('Failed to load albums:', e);
+        console.warn('Server offline for albums:', e.message);
     }
+    
+    // Merge with local albums
+    const localAlbums = getLocalAlbums();
+    const serverIds = new Set(serverAlbums.map(a => a.id));
+    const newLocals = localAlbums.filter(a => !serverIds.has(a.id));
+    const allAlbums = [...newLocals, ...serverAlbums];
+    
+    if (allAlbums.length === 0) {
+        list.innerHTML = '<p class="albums-empty">No albums yet. Create your first one!</p>';
+        return;
+    }
+    
+    list.innerHTML = allAlbums.map(album => `
+        <div class="album-item" data-id="${album.id}">
+            <div class="album-icon">📁</div>
+            <div class="album-info">
+                <strong>${escapeHtml(album.name)}</strong>
+                <small>${album.photos?.length || 0} photos</small>
+            </div>
+        </div>
+    `).join('');
 }
 
 async function showAlbumPicker() {
     const photoId = window.currentLightboxPhotoId;
     if (!photoId || !currentUser) {
-        showToast('Login to add photos to albums', 'error');
+        showToast('Login to add photos to albums');
         return;
     }
     
+    let serverAlbums = [];
+    
+    // Try server first
     try {
-        const res = await fetch('/api/albums');
-        const data = await res.json();
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 3000);
         
-        if (data.albums.length === 0) {
-            showToast('Create an album first!', 'error');
-            return;
-        }
-        
-        // Simple prompt-based album picker
-        const albumNames = data.albums.map((a, i) => `${i + 1}. ${a.name} (${a.photos.length} photos)`).join('\n');
-        const choice = prompt(`Select album:\n\n${albumNames}\n\nEnter number (1-${data.albums.length}):`);
-        if (!choice) return;
-        
-        const idx = parseInt(choice) - 1;
-        if (idx >= 0 && idx < data.albums.length) {
-            const album = data.albums[idx];
-            const addRes = await fetch(`/api/albums/${album.id}/photos`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ photoId })
-            });
-            if (addRes.ok) {
-                showToast(`Added to "${album.name}" 📂`);
+        const res = await fetch('/api/albums', { signal: controller.signal });
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.albums)) {
+                serverAlbums = data.albums;
             }
         }
     } catch (e) {
-        console.warn('Failed to show album picker:', e);
+        console.warn('Server offline for album picker:', e.message);
+    }
+    
+    // Merge with local albums
+    const localAlbums = getLocalAlbums();
+    const serverIds = new Set(serverAlbums.map(a => a.id));
+    const newLocals = localAlbums.filter(a => !serverIds.has(a.id));
+    const allAlbums = [...newLocals, ...serverAlbums];
+    
+    if (allAlbums.length === 0) {
+        showToast('Create an album first!');
+        return;
+    }
+    
+    // Simple prompt-based album picker
+    const albumNames = allAlbums.map((a, i) => `${i + 1}. ${a.name} (${a.photos?.length || 0} photos)`).join('\n');
+    const choice = prompt(`Select album:\n\n${albumNames}\n\nEnter number (1-${allAlbums.length}):`);
+    if (!choice) return;
+    
+    const idx = parseInt(choice) - 1;
+    if (idx >= 0 && idx < allAlbums.length) {
+        const album = allAlbums[idx];
+        
+        // Try server
+        try {
+            const controller = new AbortController();
+            setTimeout(() => controller.abort(), 3000);
+            
+            const addRes = await fetch(`/api/albums/${album.id}/photos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ photoId }),
+                signal: controller.signal
+            });
+            if (addRes.ok) {
+                showToast(`Added to "${album.name}" 📂`);
+                return;
+            }
+        } catch (e) {
+            console.warn('Server offline, saving to album locally:', e.message);
+        }
+        
+        // Save locally
+        const localAlbumsAll = getLocalAlbums();
+        const targetAlbum = localAlbumsAll.find(a => a.id === album.id);
+        if (targetAlbum) {
+            if (!targetAlbum.photos.includes(photoId)) {
+                targetAlbum.photos.push(photoId);
+            }
+            saveLocalAlbums(localAlbumsAll);
+            showToast(`Added to "${album.name}" (offline) 📂`);
+        }
     }
 }
 

@@ -47,16 +47,23 @@ window.infinitePhotos = [];
 const BATCH_SIZE = 24;
 const INFINITE_BASE_ID = 10000;
 
+// Color palette for fallback placeholders when images don't load
+const placeholderColors = [
+    '#667eea', '#764ba2', '#e74c3c', '#f39c12', '#2ecc71',
+    '#3498db', '#9b59b6', '#1abc9c', '#e67e22', '#34495e',
+    '#16a085', '#c0392b', '#8e44ad', '#2c3e50', '#d35400'
+];
+
 // Generate a batch of unique photos using picsum.photos
 function generatePhotoBatch(count) {
     const batch = [];
     for (let i = 0; i < count; i++) {
-        // Stay within picsum-safe range (58-697) but randomize per page to avoid quick duplicates
         const picsumId = ((generatedCount + i + (infinitePage * 53)) % 640) + 58;
         const aspect = aspects[(generatedCount + i) % aspects.length];
         const category = categories[(generatedCount + i) % categories.length];
         const artist = artists[(generatedCount + i) % artists.length];
         const title = titles[(generatedCount + i) % titles.length];
+        const color = placeholderColors[(generatedCount + i) % placeholderColors.length];
 
         batch.push({
             id: INFINITE_BASE_ID + generatedCount + i,
@@ -66,6 +73,7 @@ function generatePhotoBatch(count) {
             aspect: aspect.type,
             image: `https://picsum.photos/id/${picsumId}/${aspect.w}/${aspect.h}`,
             fullImage: `https://picsum.photos/id/${picsumId}/${aspect.fw}/${aspect.fh}`,
+            placeholderColor: color,
             generated: true
         });
     }

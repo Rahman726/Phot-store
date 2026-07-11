@@ -63,6 +63,29 @@ aiClose.addEventListener('click', closeAIModal);
 aiOverlay.addEventListener('click', closeAIModal);
 
 // Handle AI Image Generation
+// Generate Pollinations.ai URL directly on the client (no server needed!)
+function generateImageUrl(prompt, style, aspect) {
+    const encodedPrompt = encodeURIComponent(prompt);
+    const seed = Math.floor(Math.random() * 999999);
+    
+    // Parse aspect ratio
+    let width = 1024, height = 1024;
+    if (aspect) {
+        const parts = aspect.split('x');
+        if (parts.length === 2) {
+            width = parseInt(parts[0]) || 1024;
+            height = parseInt(parts[1]) || 1024;
+        }
+    }
+    
+    // Style-specific model selection
+    let model = 'flux';
+    if (style === 'anime') model = 'flux';
+    else if (style === 'sketch') model = 'flux';
+    
+    return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&model=${model}&seed=${seed}&enhance=true`;
+}
+
 aiForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -71,7 +94,7 @@ aiForm.addEventListener('submit', async (e) => {
     const aspect = aiAspect.value;
 
     if (!prompt) {
-        showToast('Please enter a prompt', 'error');
+        showToast('Please enter a prompt');
         return;
     }
 
@@ -84,27 +107,66 @@ aiForm.addEventListener('submit', async (e) => {
     aiResult.style.display = 'none';
 
     try {
-        const response = await fetch('/api/ai/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, style, aspect })
-        });
+        // Try server first for better features
+        let imageUrl = null;
+        let serverOffline = false;
+        
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            
+            const response = await fetch('/api/ai/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, style, aspect }),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
 
-        const data = await response.json();
-
-        if (data.success) {
-            currentGeneratedImageUrl = data.imageUrl;
-            aiGeneratedImage.src = data.imageUrl;
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.imageUrl) {
+                    imageUrl = data.imageUrl;
+                }
+            }
+        } catch (serverErr) {
+            serverOffline = true;
+            console.log('Server offline for AI, using client-side generation:', serverErr.message);
+        }
+        
+        // If server failed, generate URL directly (no server needed!)
+        if (!imageUrl) {
+            imageUrl = generateImageUrl(prompt, style, aspect);
+            if (serverOffline) {
+                showToast('✨ Generating (offline mode)...');
+            }
+        }
+        
+        if (imageUrl) {
+            currentGeneratedImageUrl = imageUrl;
+            aiGeneratedImage.src = imageUrl;
             aiResult.style.display = 'block';
             aiForm.style.display = 'none';
             aiSuggestions.style.display = 'none';
-            showToast('✨ Image generated!', 'success');
+            showToast('✨ Image generated!');
         } else {
-            showToast(data.error || 'Failed to generate image', 'error');
+            showToast('Failed to generate image');
         }
     } catch (error) {
         console.error('AI Error:', error);
-        showToast('Failed to generate image. Try again.', 'error');
+        
+        // Last resort: generate URL directly
+        try {
+            const fallbackUrl = generateImageUrl(prompt, style, aspect);
+            currentGeneratedImageUrl = fallbackUrl;
+            aiGeneratedImage.src = fallbackUrl;
+            aiResult.style.display = 'block';
+            aiForm.style.display = 'none';
+            aiSuggestions.style.display = 'none';
+            showToast('✨ Image generated (direct mode)!');
+        } catch (e2) {
+            showToast('Failed to generate image. Try again.');
+        }
     } finally {
         aiSubmitBtn.disabled = false;
         aiSubmitBtn.classList.remove('loading');

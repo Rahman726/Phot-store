@@ -14,9 +14,56 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-1209e7c31f9143c8b713206a823188dc';
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+}));
 app.use(bodyParser.json({ limit: '100mb' }));
-app.use(express.static(__dirname));
+
+// PWA headers for service worker, cache control, and offline support
+app.use((req, res, next) => {
+    // Allow service worker to register from any scope
+    if (req.url === '/sw.js' || req.url === '/manifest.json') {
+        res.setHeader('Service-Worker-Allowed', '/');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+    
+    // Cache static assets (JS, CSS) for performance
+    if (req.url.match(/\.(js|css)$/) && !req.url.includes('/api/')) {
+        res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
+    }
+    
+    // Images: cache for 7 days
+    if (req.url.match(/\.(png|jpg|jpeg|gif|ico|svg|webp|avif)$/)) {
+        res.setHeader('Cache-Control', 'public, max-age=604800');
+    }
+    
+    // No cache for API endpoints
+    if (req.url.startsWith('/api/')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+    
+    // CORS for external services (pollinations.ai, picsum.photos)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    next();
+});
+
+app.use(express.static(__dirname, {
+    maxAge: '1h',
+    setHeaders: (res, path) => {
+        if (path.endsWith('.js') || path.endsWith('.css')) {
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+        }
+        if (path.endsWith('.json') || path.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache');
+        }
+    }
+}));
 
 // In-memory user storage (in production, use a database)
 let users = [];
@@ -309,67 +356,6 @@ app.post('/api/chat', async (req, res) => {
         res.status(500).json({ error: 'Chat service unavailable' });
     }
 });
-
-// ===================== PHOTO UPLOAD =====================
-
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// POST /api/upload — upload a photo (base64 JSON)
-app.post('/api/upload', async (req, res) => {
-    try {
-        const { image, title, artist, category } = req.body;
-
-        if (!image) {
-            return res.status(400).json({ error: 'Image data is required' });
-        }
-
-        if (!title || !artist) {
-            return res.status(400).json({ error: 'Title and artist name are required' });
-        }
-
-        // Decode base64 image
-        const matches = image.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
-        if (!matches) {
-            return res.status(400).json({ error: 'Invalid image format. Use JPG, PNG, or WebP.' });
-        }
-
-        const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
-        const buffer = Buffer.from(matches[2], 'base64');
-        const filename = `photo-${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`;
-        const filePath = path.join(uploadsDir, filename);
-
-        fs.writeFileSync(filePath, buffer);
-
-        const photoId = Date.now();
-        const url = `/uploads/${filename}`;
-
-        const newPhoto = {
-            id: photoId,
-            title,
-            artist,
-            category: category || 'other',
-            aspect: 'square',
-            image: url,
-            fullImage: url,
-            createdAt: new Date().toISOString()
-        };
-
-        sharedPhotos.unshift(newPhoto);
-        savePhotos(sharedPhotos);
-
-        console.log(`Photo uploaded: ${title} by ${artist}`);
-        res.status(201).json({ success: true, photo: newPhoto });
-    } catch (error) {
-        console.error('Upload error:', error);
-        res.status(500).json({ error: 'Failed to upload photo' });
-    }
-});
-
-// Serve uploaded files
-app.use('/uploads', express.static(uploadsDir));
 
 // ===================== SHARED PHOTO STORAGE =====================
 
@@ -683,5 +669,14 @@ if (require.main === module) {
         console.log(`Shared photos loaded: ${sharedPhotos.length}`);
     });
 }
+
+// ===================== OFFLINE FALLBACK =====================
+// Serve index.html for all other routes (SPA fallback)
+app.get('*', (req, res) => {
+    if (req.url.startsWith('/api/')) {
+        return res.status(404).json({ error: 'API endpoint not found' });
+    }
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 module.exports = app;

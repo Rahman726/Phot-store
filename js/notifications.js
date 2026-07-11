@@ -39,20 +39,55 @@ function initNotifications() {
         }
     });
     
-    // Poll for notifications every 30 seconds
-    let lastCheck = Date.now();
+    // Poll for notifications only when online
     setInterval(() => {
-        checkNotifications();
+        if (navigator.onLine) {
+            checkNotifications();
+        }
     }, 30000);
     
     // Check on page load too
     setTimeout(checkNotifications, 2000);
+    
+    // Show offline notification style
+    if (!navigator.onLine) {
+        showOfflineNotifications();
+    }
+}
+
+function showOfflineNotifications() {
+    const list = document.getElementById('notifList');
+    const count = document.getElementById('notifCount');
+    if (list) {
+        list.innerHTML = `
+            <div class="notif-item">
+                <span class="notif-icon">📡</span>
+                <div class="notif-text">
+                    <p>You are offline. Notifications will update when you reconnect.</p>
+                    <small>Just now</small>
+                </div>
+            </div>
+            <div class="notif-item">
+                <span class="notif-icon">✅</span>
+                <div class="notif-text">
+                    <p>Core features still work offline!</p>
+                    <small>Just now</small>
+                </div>
+            </div>
+        `;
+    }
+    if (count) {
+        count.textContent = '!';
+        count.classList.add('visible');
+    }
 }
 
 async function checkNotifications() {
     try {
-        // Check for new comments on photos the user has interacted with
-        const res = await fetch('/api/notifications');
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 5000);
+        
+        const res = await fetch('/api/notifications', { signal: controller.signal });
         if (res.ok) {
             const data = await res.json();
             const list = document.getElementById('notifList');
@@ -68,15 +103,28 @@ async function checkNotifications() {
                         <div class="notif-item">
                             <span class="notif-icon">${n.icon || '💬'}</span>
                             <div class="notif-text">
-                                <p>${n.message}</p>
-                                <small>${n.time}</small>
+                                <p>${escapeHtml(n.message)}</p>
+                                <small>${n.time || 'Just now'}</small>
                             </div>
                         </div>
                     `).join('');
+                }
+            } else {
+                if (list) {
+                    list.innerHTML = '<p class="notif-empty">No notifications yet</p>';
+                }
+                if (count) {
+                    count.classList.remove('visible');
                 }
             }
         }
     } catch (e) {
         // Silent fail
     }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }

@@ -58,12 +58,14 @@ function renderGallery(photosToRender, append = false) {
             simulateDownload(photo);
         });
 
-        // Image error fallback
+        // Image error fallback — show colored placeholder with title initials
         const img = item.querySelector('img');
+        const color = photo.placeholderColor || '#667eea';
+        const initials = photo.title.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
         img.onerror = function() {
-            this.outerHTML = `<div class="photo-fallback">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                <span>Image unavailable</span>
+            this.outerHTML = `<div class="photo-fallback" style="background:${color}">
+                <span style="font-size:2rem;font-weight:700;color:rgba(255,255,255,0.8);">${initials || '📷'}</span>
+                <span style="font-size:0.75rem;color:rgba(255,255,255,0.6);text-align:center;padding:0 12px;">${photo.title}</span>
             </div>`;
         };
 

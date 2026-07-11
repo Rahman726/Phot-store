@@ -99,7 +99,7 @@ async function loadExplore(tab) {
 
 function renderExploreGrid(grid, items) {
     if (items.length === 0) {
-        grid.innerHTML = '<p class="explore-empty">No photos to show yet. Generate some AI images or upload photos!</p>';
+        grid.innerHTML = '<p class="explore-empty">No photos to show yet. Generate some AI images!</p>';
         return;
     }
     
