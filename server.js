@@ -14,59 +14,95 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-1209e7c31f9143c8b713206a823188dc';
 
 // Middleware
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-}));
+app.use(cors());
 app.use(bodyParser.json({ limit: '100mb' }));
 
 // PWA headers for service worker, cache control, and offline support
 app.use((req, res, next) => {
-    // Allow service worker to register from any scope
+    // Service worker must be served without cache
     if (req.url === '/sw.js' || req.url === '/manifest.json') {
         res.setHeader('Service-Worker-Allowed', '/');
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     }
-    
-    // Cache static assets (JS, CSS) for performance
-    if (req.url.match(/\.(js|css)$/) && !req.url.includes('/api/')) {
-        res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
-    }
-    
-    // Images: cache for 7 days
-    if (req.url.match(/\.(png|jpg|jpeg|gif|ico|svg|webp|avif)$/)) {
-        res.setHeader('Cache-Control', 'public, max-age=604800');
-    }
-    
-    // No cache for API endpoints
-    if (req.url.startsWith('/api/')) {
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    }
-    
-    // CORS for external services (pollinations.ai, picsum.photos)
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    
     next();
 });
 
 app.use(express.static(__dirname, {
     maxAge: '1h',
-    setHeaders: (res, path) => {
-        if (path.endsWith('.js') || path.endsWith('.css')) {
+    setHeaders: (res, filePath) => {
+        // Cache JS and CSS for 24 hours
+        if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
             res.setHeader('Cache-Control', 'public, max-age=86400');
         }
-        if (path.endsWith('.json') || path.endsWith('.html')) {
+        // Cache images for 7 days
+        if (filePath.match(/\.(png|jpg|jpeg|gif|ico|svg|webp|avif)$/)) {
+            res.setHeader('Cache-Control', 'public, max-age=604800');
+        }
+        // HTML and JSON: no cache
+        if (filePath.endsWith('.json') || filePath.endsWith('.html')) {
             res.setHeader('Cache-Control', 'no-cache');
         }
     }
 }));
 
-// In-memory user storage (in production, use a database)
-let users = [];
+// ===================== SHARED PHOTO STORAGE =====================
+
+const DATA_DIR = path.join(__dirname, 'data');
+const PHOTOS_FILE = path.join(DATA_DIR, 'photos.json');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const TAGS_FILE = path.join(DATA_DIR, 'tags.json');
+const RATINGS_FILE = path.join(DATA_DIR, 'ratings.json');
+const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
+const ALBUMS_FILE = path.join(DATA_DIR, 'albums.json');
+const NOTIFICATIONS_FILE = path.join(DATA_DIR, 'notifications.json');
+const VIEWS_FILE = path.join(DATA_DIR, 'views.json');
+const VIDEO_ALBUMS_FILE = path.join(DATA_DIR, 'video-albums.json');
+
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+// Generic JSON file loader/saver
+function loadJSON(filePath, defaultValue) {
+    try {
+        if (fs.existsSync(filePath)) {
+            const raw = fs.readFileSync(filePath, 'utf-8');
+            return JSON.parse(raw);
+        }
+    } catch (e) {
+        console.error(`Failed to load ${path.basename(filePath)}:`, e.message);
+    }
+    return defaultValue;
+}
+
+function saveJSON(filePath, data) {
+    try {
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (e) {
+        console.error(`Failed to save ${path.basename(filePath)}:`, e.message);
+    }
+}
+
+// Debounced save to avoid excessive disk writes
+const _saveTimers = {};
+function debouncedSave(filePath, data, delay = 1000) {
+    if (_saveTimers[filePath]) clearTimeout(_saveTimers[filePath]);
+    _saveTimers[filePath] = setTimeout(() => saveJSON(filePath, data), delay);
+}
+
+// Load all persistent data
+let sharedPhotos = loadJSON(PHOTOS_FILE, []);
+let users = loadJSON(USERS_FILE, []);
+let photoTags = loadJSON(TAGS_FILE, {});
+let photoRatings = loadJSON(RATINGS_FILE, {});
+let photoComments = loadJSON(COMMENTS_FILE, {});
+let albums = loadJSON(ALBUMS_FILE, []);
+let userNotifications = loadJSON(NOTIFICATIONS_FILE, []);
+let photoViews = loadJSON(VIEWS_FILE, {});
+let videoAlbums = loadJSON(VIDEO_ALBUMS_FILE, []);
+
+console.log(`Loaded data: ${users.length} users, ${sharedPhotos.length} photos, ${albums.length} albums`);
 
 // Helper function to generate token
 const generateToken = (user) => {
@@ -104,6 +140,7 @@ app.post('/api/auth/signup', async (req, res) => {
         };
 
         users.push(user);
+        saveJSON(USERS_FILE, users);
 
         // Generate token
         const token = generateToken(user);
@@ -198,6 +235,7 @@ app.post('/api/auth/google', async (req, res) => {
                 createdAt: new Date().toISOString()
             };
             users.push(user);
+            saveJSON(USERS_FILE, users);
         }
 
         // Generate JWT (same as regular auth)
@@ -359,37 +397,6 @@ app.post('/api/chat', async (req, res) => {
 
 // ===================== SHARED PHOTO STORAGE =====================
 
-const PHOTOS_FILE = path.join(__dirname, 'data', 'photos.json');
-
-// Ensure data directory exists
-const dataDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-}
-
-// Load photos from file or start with empty array
-function loadPhotos() {
-    try {
-        if (fs.existsSync(PHOTOS_FILE)) {
-            const raw = fs.readFileSync(PHOTOS_FILE, 'utf-8');
-            return JSON.parse(raw);
-        }
-    } catch (e) {
-        console.error('Failed to load photos:', e.message);
-    }
-    return [];
-}
-
-function savePhotos(photos) {
-    try {
-        fs.writeFileSync(PHOTOS_FILE, JSON.stringify(photos, null, 2), 'utf-8');
-    } catch (e) {
-        console.error('Failed to save photos:', e.message);
-    }
-}
-
-let sharedPhotos = loadPhotos();
-
 // GET /api/photos — return all shared photos
 app.get('/api/photos', (req, res) => {
     res.json(sharedPhotos);
@@ -416,7 +423,7 @@ app.post('/api/photos', (req, res) => {
         };
 
         sharedPhotos.unshift(newPhoto);
-        savePhotos(sharedPhotos);
+        saveJSON(PHOTOS_FILE, sharedPhotos);
 
         console.log(`New photo saved: ${id}`);
         res.status(201).json({ success: true, photo: newPhoto });
@@ -428,7 +435,7 @@ app.post('/api/photos', (req, res) => {
 
 // ===================== TAGS =====================
 
-let photoTags = {}; // { photoId: [tag1, tag2, ...] }
+// Tags are now loaded from persistent JSON storage above
 
 // GET /api/tags/:photoId — get tags for a photo
 app.get('/api/tags/:photoId', (req, res) => {
@@ -443,12 +450,13 @@ app.post('/api/tags/:photoId', (req, res) => {
         return res.status(400).json({ error: 'Tags array is required' });
     }
     photoTags[req.params.photoId] = [...new Set([...(photoTags[req.params.photoId] || []), ...tags])];
+    debouncedSave(TAGS_FILE, photoTags);
     res.json({ tags: photoTags[req.params.photoId] });
 });
 
 // ===================== RATINGS =====================
 
-let photoRatings = {}; // { photoId: [1, 5, 3, ...] }
+// Ratings are now loaded from persistent JSON storage above
 
 // POST /api/ratings/:photoId — rate a photo
 app.post('/api/ratings/:photoId', (req, res) => {
@@ -461,6 +469,7 @@ app.post('/api/ratings/:photoId', (req, res) => {
         photoRatings[req.params.photoId] = [];
     }
     photoRatings[req.params.photoId].push(score);
+    debouncedSave(RATINGS_FILE, photoRatings);
     const ratings = photoRatings[req.params.photoId];
     const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
     res.json({ average: Math.round(avg * 10) / 10, count: ratings.length });
@@ -475,7 +484,7 @@ app.get('/api/ratings/:photoId', (req, res) => {
 
 // ===================== COMMENTS =====================
 
-let photoComments = {}; // { photoId: [{user, text, time}, ...] }
+// Comments are now loaded from persistent JSON storage above
 
 // GET /api/comments/:photoId — get comments for a photo
 app.get('/api/comments/:photoId', (req, res) => {
@@ -498,12 +507,13 @@ app.post('/api/comments/:photoId', (req, res) => {
         time: new Date().toISOString()
     };
     photoComments[req.params.photoId].unshift(comment);
+    debouncedSave(COMMENTS_FILE, photoComments);
     res.status(201).json({ comment });
 });
 
 // ===================== ALBUMS =====================
 
-let albums = [];
+// Albums are now loaded from persistent JSON storage above
 
 // POST /api/albums — create an album
 app.post('/api/albums', (req, res) => {
@@ -519,6 +529,7 @@ app.post('/api/albums', (req, res) => {
         createdAt: new Date().toISOString()
     };
     albums.push(album);
+    debouncedSave(ALBUMS_FILE, albums);
     res.status(201).json({ album });
 });
 
@@ -542,6 +553,7 @@ app.post('/api/albums/:id/photos', (req, res) => {
     if (!album.photos.includes(photoId)) {
         album.photos.push(photoId);
     }
+    debouncedSave(ALBUMS_FILE, albums);
     res.json({ album });
 });
 
@@ -550,12 +562,13 @@ app.delete('/api/albums/:id/photos/:photoId', (req, res) => {
     const album = albums.find(a => a.id == req.params.id);
     if (!album) return res.status(404).json({ error: 'Album not found' });
     album.photos = album.photos.filter(p => p != req.params.photoId);
+    debouncedSave(ALBUMS_FILE, albums);
     res.json({ album });
 });
 
 // ===================== NOTIFICATIONS =====================
 
-let userNotifications = [];
+// Notifications are now loaded from persistent JSON storage above
 
 // POST /api/notifications — add a notification
 app.post('/api/notifications', (req, res) => {
@@ -570,6 +583,7 @@ app.post('/api/notifications', (req, res) => {
     };
     userNotifications.unshift(notif);
     if (userNotifications.length > 50) userNotifications.length = 50;
+    debouncedSave(NOTIFICATIONS_FILE, userNotifications);
     res.status(201).json({ notification: notif });
 });
 
@@ -580,11 +594,12 @@ app.get('/api/notifications', (req, res) => {
 
 // ===================== VIEWS (for dashboard) =====================
 
-let photoViews = {};
+// Views are now loaded from persistent JSON storage above
 
 // POST /api/views/:photoId — increment view count
 app.post('/api/views/:photoId', (req, res) => {
     photoViews[req.params.photoId] = (photoViews[req.params.photoId] || 0) + 1;
+    debouncedSave(VIEWS_FILE, photoViews);
     res.json({ views: photoViews[req.params.photoId] });
 });
 
@@ -611,7 +626,7 @@ app.get('/api/stats', (req, res) => {
 
 // ===================== VIDEO ALBUMS =====================
 
-let videoAlbums = [];
+// Video Albums are now loaded from persistent JSON storage above
 
 // POST /api/video-albums — create a video album
 app.post('/api/video-albums', (req, res) => {
@@ -627,6 +642,7 @@ app.post('/api/video-albums', (req, res) => {
         createdAt: new Date().toISOString()
     };
     videoAlbums.push(album);
+    debouncedSave(VIDEO_ALBUMS_FILE, videoAlbums);
     res.status(201).json({ album });
 });
 
@@ -651,6 +667,7 @@ app.post('/api/video-albums/:id/videos', (req, res) => {
     if (!album.videos.find(v => v.videoId == videoId)) {
         album.videos.push({ videoId, title: title || 'Video', artist: artist || 'Unknown', thumbnail: thumbnail || '', videoUrl: videoUrl || '' });
     }
+    debouncedSave(VIDEO_ALBUMS_FILE, videoAlbums);
     res.json({ album });
 });
 
@@ -659,7 +676,39 @@ app.delete('/api/video-albums/:id/videos/:videoId', (req, res) => {
     const album = videoAlbums.find(a => a.id == req.params.id);
     if (!album) return res.status(404).json({ error: 'Album not found' });
     album.videos = album.videos.filter(v => v.videoId != req.params.videoId);
+    debouncedSave(VIDEO_ALBUMS_FILE, videoAlbums);
     res.json({ album });
+});
+
+// Graceful shutdown — flush pending debounced saves before exit
+function flushPendingSaves() {
+    Object.keys(_saveTimers).forEach(filePath => {
+        clearTimeout(_saveTimers[filePath]);
+        delete _saveTimers[filePath];
+    });
+    // Force immediate save for all data
+    saveJSON(PHOTOS_FILE, sharedPhotos);
+    saveJSON(USERS_FILE, users);
+    saveJSON(TAGS_FILE, photoTags);
+    saveJSON(RATINGS_FILE, photoRatings);
+    saveJSON(COMMENTS_FILE, photoComments);
+    saveJSON(ALBUMS_FILE, albums);
+    saveJSON(NOTIFICATIONS_FILE, userNotifications);
+    saveJSON(VIEWS_FILE, photoViews);
+    saveJSON(VIDEO_ALBUMS_FILE, videoAlbums);
+    console.log('All data flushed to disk.');
+}
+
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received — flushing data...');
+    flushPendingSaves();
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.log('SIGINT received — flushing data...');
+    flushPendingSaves();
+    process.exit(0);
 });
 
 // ===================== EXPORT FOR NETLIFY / LOCAL =====================

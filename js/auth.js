@@ -9,10 +9,7 @@ const loginForm = document.getElementById('loginForm');
 const signupForm = document.getElementById('signupForm');
 
 // ===================== AUTH =====================
-// Auto-detect API base — works on localhost OR deployed
-const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? '/api'
-  : '/api';
+const API_BASE = '/api';
 
 // Offline-first auth: use localStorage immediately, then verify with server if available
 let currentUser = JSON.parse(localStorage.getItem('photoStoreUser') || 'null');

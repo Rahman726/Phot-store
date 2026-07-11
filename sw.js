@@ -52,16 +52,26 @@ const PRECACHE_ASSETS = [
     '/js/chat.js'
 ];
 
-// Install event - pre-cache core assets
+// Install event - pre-cache core assets (resilient to missing files)
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(STATIC_CACHE).then((cache) => {
-            return cache.addAll(PRECACHE_ASSETS);
+        caches.open(STATIC_CACHE).then(async (cache) => {
+            // Use individual add() calls so one missing file doesn't break the whole cache
+            const results = await Promise.allSettled(
+                PRECACHE_ASSETS.map(url => 
+                    cache.add(url).catch(err => {
+                        console.warn('Skipping non-cacheable asset:', url, err.message);
+                    })
+                )
+            );
+            const failed = results.filter(r => r.status === 'rejected').length;
+            if (failed > 0) {
+                console.warn(`Service worker: ${failed} assets could not be cached (non-critical)`);
+            }
         }).then(() => {
-            // Skip waiting so the new SW activates immediately
             return self.skipWaiting();
         }).catch((err) => {
-            console.error('Pre-cache failed (some assets may be missing):', err.message);
+            console.error('Service worker install error:', err.message);
         })
     );
 });
