@@ -123,9 +123,9 @@
             <div class="nav-links"></div>
             <div class="nav-actions">
                 <button class="nav-ai-btn" id="aiGenerateBtn">✨ AI Image</button>
-                <button class="nav-install-btn" id="installAppBtn" title="Install App" style="display:none;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    <span class="install-text">Install</span>
+                <button class="nav-install-btn" id="installAppBtn" title="Install PhotoStore on your device" aria-label="Install PhotoStore App">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span class="install-text">Install App</span>
                 </button>
                 <button class="nav-fav-toggle" id="favToggle" title="Favorites">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -147,6 +147,7 @@
             <p>Create AI images and explore a beautiful gallery.</p>
             <div class="hero-mini-actions">
                 <button class="hero-ai-btn" id="heroAiBtn">🎨 Generate Image</button>
+                <button class="hero-install-btn" id="heroInstallBtn">📲 Install App</button>
             </div>
         </div>
     </section>
@@ -338,6 +339,9 @@
         <div class="container">
             <div class="footer-bottom">
                 <p>&copy; 2026 PhotoStore — Create &amp; Explore.</p>
+                <div class="footer-install" id="footerInstall">
+                    <button class="footer-install-btn" id="footerInstallBtn">📲 Install PhotoStore on Your Device</button>
+                </div>
             </div>
         </div>
     </footer>

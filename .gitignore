@@ -8,3 +8,8 @@ logs/
 .DS_Store
 Thumbs.db
 nul
+
+# Dead files from removed features
+js/darkroom.js
+js/videos.js
+

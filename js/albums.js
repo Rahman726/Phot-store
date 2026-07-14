@@ -41,10 +41,8 @@ function initAlbums() {
                 e.preventDefault();
                 // Close other full-page sections
                 const explore = document.getElementById('exploreSection');
-                const videos = document.getElementById('videosSection');
                 const dash = document.getElementById('dashboardSection');
                 if (explore) explore.style.display = 'none';
-                if (videos) videos.style.display = 'none';
                 if (dash) dash.style.display = 'none';
                 openAlbums();
             });

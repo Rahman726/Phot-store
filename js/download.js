@@ -71,14 +71,35 @@ async function simulateDownload(photo) {
 
 let deferredPrompt = null;
 let installPromptEvent = null;
+let isAppInstalled = false;
+let installPromptDismissed = false;
+
+// Check if app is already installed
+function checkIfInstalled() {
+    if (window.matchMedia('(display-mode: standalone)').matches ||
+        window.matchMedia('(display-mode: minimal-ui)').matches ||
+        window.matchMedia('(display-mode: fullscreen)').matches ||
+        ('standalone' in navigator && navigator.standalone)) {
+        isAppInstalled = true;
+        return true;
+    }
+    return false;
+}
 
 // Initialize PWA install support — works on Chrome, Edge, Samsung Internet, etc.
 function initPWAInstall() {
+    const alreadyInstalled = checkIfInstalled();
+    
+    if (alreadyInstalled) {
+        hideAllInstallButtons();
+        return;
+    }
+
     // Listen for the beforeinstallprompt event
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        showInstallButton();
+        showAllInstallButtons();
     });
 
     // Check if already installed (standalone mode)
@@ -86,18 +107,78 @@ function initPWAInstall() {
         window.matchMedia('(display-mode: minimal-ui)').matches ||
         window.matchMedia('(display-mode: fullscreen)').matches ||
         ('standalone' in navigator && navigator.standalone)) { // iOS Safari
-        hideInstallButton();
+        hideAllInstallButtons();
     }
 
     // Listen for app installed
     window.addEventListener('appinstalled', () => {
         deferredPrompt = null;
-        hideInstallButton();
+        isAppInstalled = true;
+        hideAllInstallButtons();
         showToast('✅ PhotoStore installed successfully! 🎉');
     });
     
     // Also show install button on iOS devices (they don't support beforeinstallprompt)
     detectIOSInstall();
+
+    // If neither beforeinstallprompt nor iOS, still show the install button after a delay
+    // (for Samsung Internet, or other browsers that might support it)
+    setTimeout(() => {
+        if (!isAppInstalled && !installPromptDismissed) {
+            showAllInstallButtons();
+            // Show floating install prompt after 30 seconds if user hasn't installed
+            showDelayedInstallPrompt();
+        }
+    }, 5000);
+
+    // Connect all install buttons
+    connectInstallButtons();
+}
+
+// Show a floating install prompt after a delay
+function showDelayedInstallPrompt() {
+    // Check if already shown or dismissed
+    if (installPromptDismissed || isAppInstalled) return;
+    if (document.querySelector('.install-float-prompt')) return;
+
+    setTimeout(() => {
+        if (installPromptDismissed || isAppInstalled) return;
+        if (document.querySelector('.install-float-prompt')) return;
+
+        const floatPrompt = document.createElement('div');
+        floatPrompt.className = 'install-float-prompt';
+        floatPrompt.innerHTML = `
+            <div class="install-float-icon">📲</div>
+            <div class="install-float-text">
+                <strong>Install PhotoStore</strong>
+                <span>Use offline, faster access</span>
+            </div>
+            <button class="install-float-btn" id="floatInstallBtn">Install</button>
+            <button class="install-float-close" id="floatInstallClose">✕</button>
+        `;
+        document.body.appendChild(floatPrompt);
+
+        // Animate in
+        requestAnimationFrame(() => {
+            floatPrompt.classList.add('show');
+        });
+
+        // Install button
+        document.getElementById('floatInstallBtn')?.addEventListener('click', () => {
+            floatPrompt.classList.remove('show');
+            setTimeout(() => floatPrompt.remove(), 300);
+            promptInstallApp();
+        });
+
+        // Close button
+        document.getElementById('floatInstallClose')?.addEventListener('click', () => {
+            installPromptDismissed = true;
+            floatPrompt.classList.remove('show');
+            setTimeout(() => floatPrompt.remove(), 300);
+            // Also hide other install buttons temporarily
+            // Don't hide permanently, user might want to install later
+        });
+    }, 30000); // Show after 30 seconds
 }
 
 // iOS doesn't support the beforeinstallprompt event, but we can show instructions
@@ -107,19 +188,142 @@ function detectIOSInstall() {
     
     if (isIOS && !isStandalone) {
         // Show install button with iOS instructions
-        showInstallButton();
-        document.getElementById('installAppBtn')?.setAttribute('title', 'Tap Share > Add to Home Screen');
+        showAllInstallButtons();
+        document.querySelectorAll('.install-text').forEach(el => {
+            el.textContent = 'Install';
+        });
         
         // Override prompt for iOS
         window.promptInstallApp = async function() {
-            showToast('📱 Tap the Share button in Safari, then "Add to Home Screen"');
+            showIOSInstallModal();
         };
     }
 }
 
+// Show iOS-specific install instructions in a modal
+function showIOSInstallModal() {
+    // Remove existing modal if any
+    document.querySelector('.ios-install-modal')?.remove();
+
+    const modal = document.createElement('div');
+    modal.className = 'ios-install-modal';
+    modal.innerHTML = `
+        <div class="ios-install-overlay"></div>
+        <div class="ios-install-panel">
+            <button class="ios-install-close">✕</button>
+            <div class="ios-install-icon">📲</div>
+            <h3>Install PhotoStore on iPhone/iPad</h3>
+            <div class="ios-install-steps">
+                <div class="ios-step">
+                    <span class="ios-step-num">1</span>
+                    <span>Tap the <strong>Share</strong> button <span class="ios-share-icon">⎙</span> in Safari</span>
+                </div>
+                <div class="ios-step">
+                    <span class="ios-step-num">2</span>
+                    <span>Scroll down and tap <strong>"Add to Home Screen"</strong></span>
+                </div>
+                <div class="ios-step">
+                    <span class="ios-step-num">3</span>
+                    <span>Tap <strong>"Add"</strong> in the top right corner</span>
+                </div>
+            </div>
+            <button class="ios-install-done">Got it! ✅</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Animate in
+    requestAnimationFrame(() => {
+        modal.classList.add('open');
+    });
+
+    // Close handlers
+    modal.querySelector('.ios-install-close')?.addEventListener('click', () => {
+        modal.classList.remove('open');
+        setTimeout(() => modal.remove(), 300);
+    });
+    modal.querySelector('.ios-install-overlay')?.addEventListener('click', () => {
+        modal.classList.remove('open');
+        setTimeout(() => modal.remove(), 300);
+    });
+    modal.querySelector('.ios-install-done')?.addEventListener('click', () => {
+        modal.classList.remove('open');
+        setTimeout(() => modal.remove(), 300);
+    });
+}
+
+// Connect all install buttons in the UI
+function connectInstallButtons() {
+    // Navbar install button
+    document.getElementById('installAppBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        promptInstallApp();
+    });
+
+    // Hero install button
+    document.getElementById('heroInstallBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        promptInstallApp();
+    });
+
+    // Footer install button
+    document.getElementById('footerInstallBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        promptInstallApp();
+    });
+
+    // Any custom install buttons
+    document.querySelectorAll('[data-install-app]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (typeof promptInstallApp === 'function') promptInstallApp();
+        });
+    });
+}
+
+function showAllInstallButtons() {
+    if (isAppInstalled) return;
+    
+    const installBtn = document.getElementById('installAppBtn');
+    if (installBtn) {
+        installBtn.style.display = 'flex';
+        installBtn.classList.add('visible');
+    }
+    
+    const heroBtn = document.getElementById('heroInstallBtn');
+    if (heroBtn) {
+        heroBtn.style.display = 'inline-flex';
+        heroBtn.classList.add('visible');
+    }
+
+    const footerInstall = document.getElementById('footerInstall');
+    if (footerInstall) {
+        footerInstall.style.display = 'block';
+    }
+}
+
+function hideAllInstallButtons() {
+    const installBtn = document.getElementById('installAppBtn');
+    if (installBtn) {
+        installBtn.style.display = 'none';
+        installBtn.classList.remove('visible');
+    }
+    
+    const heroBtn = document.getElementById('heroInstallBtn');
+    if (heroBtn) {
+        heroBtn.style.display = 'none';
+        heroBtn.classList.remove('visible');
+    }
+
+    const footerInstall = document.getElementById('footerInstall');
+    if (footerInstall) {
+        footerInstall.style.display = 'none';
+    }
+
+    // Remove floating prompt if it exists
+    document.querySelector('.install-float-prompt')?.remove();
+}
+
 // Handle PWA display modes for TV, Desktop, Mobile, etc.
-// TV (webOS, Tizen) runs the app in the browser typically
-// We add shortcuts for TV remote navigation
 function setupTVMode() {
     const isTV = /tv|tizen|webOS|SMART-TV|NetCast/i.test(navigator.userAgent);
     if (isTV) {
@@ -127,35 +331,23 @@ function setupTVMode() {
     }
 }
 
-function showInstallButton() {
-    const installBtn = document.getElementById('installAppBtn');
-    if (installBtn) {
-        installBtn.style.display = 'flex';
-        installBtn.classList.add('visible');
-    }
-}
-
-function hideInstallButton() {
-    const installBtn = document.getElementById('installAppBtn');
-    if (installBtn) {
-        installBtn.style.display = 'none';
-        installBtn.classList.remove('visible');
-    }
-}
-
 // Trigger the install prompt
 async function promptInstallApp() {
+    // iOS handling
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIOS) {
+        showIOSInstallModal();
+        return;
+    }
+
     if (!deferredPrompt) {
         // Show manual install instructions based on device
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isMobile = /Android/i.test(navigator.userAgent);
         
-        if (isIOS) {
-            showToast('📱 Tap Share > Add to Home Screen');
-        } else if (isMobile) {
-            showToast('📱 Open menu (⋮) > Install app or Add to Home screen');
+        if (isMobile) {
+            showToast('📱 Open browser menu (⋮) > "Install app" or "Add to Home screen"');
         } else {
-            showToast('ℹ️ Look for the install icon in the address bar');
+            showDesktopInstallModal();
         }
         return;
     }
@@ -170,13 +362,57 @@ async function promptInstallApp() {
         showToast('📲 Installing PhotoStore...');
     } else {
         showToast('Install cancelled');
+        installPromptDismissed = true;
     }
     
     deferredPrompt = null;
-    hideInstallButton();
+}
+
+// Show desktop install instructions modal
+function showDesktopInstallModal() {
+    document.querySelector('.desktop-install-modal')?.remove();
+
+    const modal = document.createElement('div');
+    modal.className = 'desktop-install-modal';
+    modal.innerHTML = `
+        <div class="desktop-install-overlay"></div>
+        <div class="desktop-install-panel">
+            <button class="desktop-install-close">✕</button>
+            <div class="desktop-install-icon">🖥️</div>
+            <h3>Install PhotoStore on your computer</h3>
+            <p class="desktop-install-subtitle">Access PhotoStore anytime, even offline!</p>
+            <div class="desktop-install-steps">
+                <div class="desktop-step chrome-step">
+                    <span class="desktop-step-browser">Chrome / Edge</span>
+                    <span>Click the <strong>install icon</strong> <span class="install-icon-example">⎈</span> in the address bar</span>
+                </div>
+                <div class="desktop-step">
+                    <span class="desktop-step-browser">Or</span>
+                    <span>Click browser menu <strong>(⋮)</strong> > <strong>"Install PhotoStore"</strong></span>
+                </div>
+            </div>
+            <button class="desktop-install-done">Got it! ✅</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    requestAnimationFrame(() => {
+        modal.classList.add('open');
+    });
+
+    modal.querySelector('.desktop-install-close')?.addEventListener('click', () => {
+        modal.classList.remove('open');
+        setTimeout(() => modal.remove(), 300);
+    });
+    modal.querySelector('.desktop-install-overlay')?.addEventListener('click', () => {
+        modal.classList.remove('open');
+        setTimeout(() => modal.remove(), 300);
+    });
+    modal.querySelector('.desktop-install-done')?.addEventListener('click', () => {
+        modal.classList.remove('open');
+        setTimeout(() => modal.remove(), 300);
+    });
 }
 
 // Auto-detect display mode and setup
 setupTVMode();
-
-

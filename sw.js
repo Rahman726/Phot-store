@@ -44,7 +44,6 @@ const PRECACHE_ASSETS = [
     '/js/music.js',
     '/js/profiles.js',
     '/js/parallax.js',
-    '/js/videos.js',
     '/js/color-match.js',
     '/js/editor.js',
     '/js/heatmap.js',

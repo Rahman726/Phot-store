@@ -3326,6 +3326,495 @@ body.tv-mode .lightbox-image {
     padding: 30px 0;
 }
 
+/* ===================== INSTALL FEATURES ===================== */
+
+/* ── Hero Install Button ── */
+.hero-install-btn {
+    display: none;
+    padding: 14px 32px;
+    border-radius: 50px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--accent);
+    color: white;
+    border: 2px solid rgba(255,255,255,0.2);
+    animation: fadeIn 0.5s ease;
+}
+
+.hero-install-btn.visible {
+    display: inline-flex;
+}
+
+.hero-install-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(5, 160, 129, 0.4);
+    background: var(--accent-hover);
+}
+
+.hero-install-btn:active {
+    transform: translateY(0);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Footer Install ── */
+.footer-install {
+    display: none;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.footer-install-btn {
+    padding: 14px 28px;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #05a081, #038a6f);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+    font-family: var(--font);
+    box-shadow: 0 4px 12px rgba(5, 160, 129, 0.3);
+}
+
+.footer-install-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(5, 160, 129, 0.4);
+    background: var(--accent-hover);
+}
+
+.footer-install-btn:active {
+    transform: translateY(0);
+}
+
+/* ── Floating Install Prompt ── */
+.install-float-prompt {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    z-index: 9000;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: calc(100vw - 32px);
+}
+
+.install-float-prompt.show {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(-50%) translateY(0);
+}
+
+.install-float-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.install-float-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.install-float-text strong {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.install-float-text span {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.install-float-btn {
+    padding: 10px 20px;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #05a081, #038a6f);
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    font-family: var(--font);
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.install-float-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(5, 160, 129, 0.3);
+}
+
+.install-float-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.install-float-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* ── iOS Install Modal ── */
+.ios-install-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 6000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.ios-install-modal.open {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.ios-install-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+}
+
+.ios-install-panel {
+    position: relative;
+    width: 90%;
+    max-width: 420px;
+    background: var(--bg-primary);
+    border-radius: 20px;
+    padding: 32px 28px;
+    text-align: center;
+    box-shadow: 0 25px 80px rgba(0,0,0,0.4);
+    animation: photoIn 0.3s ease;
+}
+
+.ios-install-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+    font-size: 1.1rem;
+    transition: var(--transition);
+}
+
+.ios-install-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.ios-install-icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+}
+
+.ios-install-panel h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--text-primary);
+}
+
+.ios-install-steps {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.ios-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.ios-step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.ios-share-icon {
+    display: inline-block;
+    font-size: 1.2rem;
+    background: var(--accent-light);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.ios-install-done {
+    width: 100%;
+    padding: 14px 20px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: var(--transition);
+    font-family: var(--font);
+}
+
+.ios-install-done:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+/* ── Desktop Install Modal ── */
+.desktop-install-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 6000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.desktop-install-modal.open {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.desktop-install-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+}
+
+.desktop-install-panel {
+    position: relative;
+    width: 90%;
+    max-width: 480px;
+    background: var(--bg-primary);
+    border-radius: 20px;
+    padding: 36px 28px;
+    text-align: center;
+    box-shadow: 0 25px 80px rgba(0,0,0,0.4);
+    animation: photoIn 0.3s ease;
+}
+
+.desktop-install-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+    font-size: 1.1rem;
+    transition: var(--transition);
+}
+
+.desktop-install-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.desktop-install-icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+}
+
+.desktop-install-panel h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.desktop-install-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+}
+
+.desktop-install-steps {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.desktop-step {
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.desktop-step-browser {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--accent);
+    margin-bottom: 4px;
+}
+
+.install-icon-example {
+    display: inline-block;
+    font-size: 1.1rem;
+    background: var(--accent);
+    color: white;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.desktop-install-done {
+    width: 100%;
+    padding: 14px 20px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: var(--transition);
+    font-family: var(--font);
+}
+
+.desktop-install-done:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+/* ── Install Feature Dark Mode Overrides ── */
+:root.dark-mode .install-float-prompt {
+    background: #1a1a24;
+    border-color: #2a2a3a;
+}
+
+:root.dark-mode .install-float-prompt .install-float-text strong {
+    color: #e8e8f0;
+}
+
+:root.dark-mode .install-float-prompt .install-float-text span {
+    color: #9999b0;
+}
+
+:root.dark-mode .ios-install-panel,
+:root.dark-mode .desktop-install-panel {
+    background: #111118;
+}
+
+:root.dark-mode .desktop-step {
+    background: #1a1a24;
+    border-color: #2a2a3a;
+}
+
+/* ── Install Feature Responsive ── */
+@media (max-width: 600px) {
+    .hero-install-btn {
+        padding: 12px 24px;
+        font-size: 0.9rem;
+    }
+    
+    .install-float-prompt {
+        bottom: 70px;
+        padding: 14px 16px;
+        gap: 10px;
+    }
+    
+    .install-float-icon {
+        font-size: 1.5rem;
+    }
+    
+    .install-float-text strong {
+        font-size: 0.82rem;
+    }
+    
+    .install-float-text span {
+        font-size: 0.72rem;
+    }
+    
+    .install-float-btn {
+        padding: 8px 14px;
+        font-size: 0.78rem;
+    }
+    
+    .ios-install-panel,
+    .desktop-install-panel {
+        padding: 24px 20px;
+    }
+    
+    .footer-install-btn {
+        padding: 12px 20px;
+        font-size: 0.9rem;
+        width: 100%;
+    }
+}
+
 /* ===================== HEATMAP ===================== */
 .heatmap-card {
     overflow: hidden;

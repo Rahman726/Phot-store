@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-1209e7c31f9143c8b713206a823188dc';
@@ -56,7 +56,6 @@ const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
 const ALBUMS_FILE = path.join(DATA_DIR, 'albums.json');
 const NOTIFICATIONS_FILE = path.join(DATA_DIR, 'notifications.json');
 const VIEWS_FILE = path.join(DATA_DIR, 'views.json');
-const VIDEO_ALBUMS_FILE = path.join(DATA_DIR, 'video-albums.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -100,7 +99,6 @@ let photoComments = loadJSON(COMMENTS_FILE, {});
 let albums = loadJSON(ALBUMS_FILE, []);
 let userNotifications = loadJSON(NOTIFICATIONS_FILE, []);
 let photoViews = loadJSON(VIEWS_FILE, {});
-let videoAlbums = loadJSON(VIDEO_ALBUMS_FILE, []);
 
 console.log(`Loaded data: ${users.length} users, ${sharedPhotos.length} photos, ${albums.length} albums`);
 
@@ -624,62 +622,6 @@ app.get('/api/stats', (req, res) => {
     });
 });
 
-// ===================== VIDEO ALBUMS =====================
-
-// Video Albums are now loaded from persistent JSON storage above
-
-// POST /api/video-albums — create a video album
-app.post('/api/video-albums', (req, res) => {
-    const { name, user } = req.body;
-    if (!name || !user) {
-        return res.status(400).json({ error: 'Name and user are required' });
-    }
-    const album = {
-        id: Date.now(),
-        name,
-        user,
-        videos: [],
-        createdAt: new Date().toISOString()
-    };
-    videoAlbums.push(album);
-    debouncedSave(VIDEO_ALBUMS_FILE, videoAlbums);
-    res.status(201).json({ album });
-});
-
-// GET /api/video-albums — list all video albums
-app.get('/api/video-albums', (req, res) => {
-    res.json({ albums: videoAlbums });
-});
-
-// GET /api/video-albums/:id — get a single video album
-app.get('/api/video-albums/:id', (req, res) => {
-    const album = videoAlbums.find(a => a.id == req.params.id);
-    if (!album) return res.status(404).json({ error: 'Album not found' });
-    res.json({ album });
-});
-
-// POST /api/video-albums/:id/videos — add video to album
-app.post('/api/video-albums/:id/videos', (req, res) => {
-    const album = videoAlbums.find(a => a.id == req.params.id);
-    if (!album) return res.status(404).json({ error: 'Album not found' });
-    const { videoId, title, artist, thumbnail, videoUrl } = req.body;
-    if (!videoId) return res.status(400).json({ error: 'videoId is required' });
-    if (!album.videos.find(v => v.videoId == videoId)) {
-        album.videos.push({ videoId, title: title || 'Video', artist: artist || 'Unknown', thumbnail: thumbnail || '', videoUrl: videoUrl || '' });
-    }
-    debouncedSave(VIDEO_ALBUMS_FILE, videoAlbums);
-    res.json({ album });
-});
-
-// DELETE /api/video-albums/:id/videos/:videoId — remove video from album
-app.delete('/api/video-albums/:id/videos/:videoId', (req, res) => {
-    const album = videoAlbums.find(a => a.id == req.params.id);
-    if (!album) return res.status(404).json({ error: 'Album not found' });
-    album.videos = album.videos.filter(v => v.videoId != req.params.videoId);
-    debouncedSave(VIDEO_ALBUMS_FILE, videoAlbums);
-    res.json({ album });
-});
-
 // Graceful shutdown — flush pending debounced saves before exit
 function flushPendingSaves() {
     Object.keys(_saveTimers).forEach(filePath => {
@@ -695,7 +637,6 @@ function flushPendingSaves() {
     saveJSON(ALBUMS_FILE, albums);
     saveJSON(NOTIFICATIONS_FILE, userNotifications);
     saveJSON(VIEWS_FILE, photoViews);
-    saveJSON(VIDEO_ALBUMS_FILE, videoAlbums);
     console.log('All data flushed to disk.');
 }
 

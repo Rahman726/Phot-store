@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (typeof initBatchDownload === 'function') initBatchDownload();
     if (typeof initPhotoFilters === 'function') initPhotoFilters();
     if (typeof initCollage === 'function') initCollage();
-    
+
     // ===================== PWA INSTALL FEATURE =====================
     if (typeof initPWAInstall === 'function') initPWAInstall();
 
