@@ -1,9 +1,9 @@
 // ===================== PhotoStore PWA Service Worker =====================
-// Version: 2.0 — Full offline-capable PWA
-const CACHE_NAME = 'photostore-v2';
-const STATIC_CACHE = 'photostore-static-v2';
-const IMAGE_CACHE = 'photostore-images-v2';
-const DYNAMIC_CACHE = 'photostore-dynamic-v2';
+// Version: 3.0 — Full offline-capable PWA
+const CACHE_NAME = 'photostore-v3';
+const STATIC_CACHE = 'photostore-static-v3';
+const IMAGE_CACHE = 'photostore-images-v3';
+const DYNAMIC_CACHE = 'photostore-dynamic-v3';
 
 // Assets to pre-cache on install (core app shell)
 const PRECACHE_ASSETS = [
@@ -102,9 +102,7 @@ function isSameOrigin(url) {
 
 // Helper: is this an image request?
 function isImageRequest(url) {
-    return url.match(/\.(jpg|jpeg|png|gif|webp|svg|ico|bmp|avif)(\?.*)?$/i) ||
-           url.includes('picsum.photos') ||
-           url.includes('pollinations.ai');
+    return url.match(/\.(jpg|jpeg|png|gif|webp|svg|ico|bmp|avif)(\?.*)?$/i);
 }
 
 // Helper: is this an API request?
@@ -139,6 +137,12 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // Bypass service worker for external image CDNs — let browser load them directly
+    // so the gallery's onerror fallback works properly when they fail
+    if (url.includes('picsum.photos') || url.includes('pollinations.ai') || url.includes('googleusercontent.com')) {
+        return;
+    }
+
     // Same-origin static assets: Cache-first strategy
     if (isSameOrigin(url) && !isApiRequest(url) && !isImageRequest(url)) {
         event.respondWith(
@@ -158,28 +162,19 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Image requests: Cache-first (picsum.photos, pollinations.ai, etc.)
+    // Image requests: Cache-first (same-origin images)
     if (isImageRequest(url)) {
         event.respondWith(
             caches.match(request).then((cachedResponse) => {
                 if (cachedResponse) return cachedResponse;
                 
-                return fetch(request, { mode: 'cors' }).then((response) => {
+                return fetch(request).then((response) => {
                     if (response.ok) {
                         const cacheCopy = response.clone();
                         cacheWithLimit(IMAGE_CACHE, request, cacheCopy, 200);
                     }
                     return response;
-                }).catch(() => {
-                    // Return a placeholder SVG if image fails
-                    return new Response(
-                        `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
-                            <rect width="400" height="300" fill="#f0f0f0"/>
-                            <text x="200" y="150" text-anchor="middle" fill="#999" font-size="16">Image offline</text>
-                        </svg>`,
-                        { headers: { 'Content-Type': 'image/svg+xml' } }
-                    );
-                });
+                })
             })
         );
         return;

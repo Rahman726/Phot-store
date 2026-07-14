@@ -62,11 +62,26 @@ function renderGallery(photosToRender, append = false) {
         const img = item.querySelector('img');
         const color = photo.placeholderColor || '#667eea';
         const initials = photo.title.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
-        img.onerror = function() {
-            this.outerHTML = `<div class="photo-fallback" style="background:${color}">
+        
+        function showFallback(el) {
+            if (!el || !el.parentNode || el.parentNode.querySelector('.photo-fallback')) return;
+            el.outerHTML = `<div class="photo-fallback" style="background:${color}">
                 <span style="font-size:2rem;font-weight:700;color:rgba(255,255,255,0.8);">${initials || '📷'}</span>
                 <span style="font-size:0.75rem;color:rgba(255,255,255,0.6);text-align:center;padding:0 12px;">${photo.title}</span>
             </div>`;
+        }
+        
+        img.onerror = function() {
+            showFallback(this);
+        };
+        
+        // Also check after load — some placeholders load as valid images (empty SVGs, etc.)
+        img.onload = function() {
+            // If image has 0 dimensions or is tiny, it's likely a placeholder
+            if (this.naturalWidth === 0 || this.naturalHeight === 0 || 
+                (this.naturalWidth < 10 && this.naturalHeight < 10)) {
+                showFallback(this);
+            }
         };
 
         masonryGrid.appendChild(item);

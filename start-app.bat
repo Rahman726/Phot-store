@@ -35,9 +35,9 @@ if not exist "node_modules" (
 REM ---- Check if server is already running ----
 echo.
 echo Checking if server is already running...
-netstat -an 2>nul | findstr "LISTENING" | findstr ":3000 " >nul 2>nul
+netstat -an 2>nul | findstr "LISTENING" | findstr ":5000 " >nul 2>nul
 if %ERRORLEVEL% equ 0 (
-    echo [OK] Server is already running on port 3000
+    echo [OK] Server is already running on port 5000
 ) else (
     echo Starting backend server...
     start "PhotoStore Server" cmd /c "node server.js"
@@ -47,7 +47,7 @@ if %ERRORLEVEL% equ 0 (
     set "ready="
     for /l %%i in (1,1,10) do (
         timeout /t 1 /nobreak >nul
-        netstat -an 2>nul | findstr "LISTENING" | findstr ":3000 " >nul 2>nul
+        netstat -an 2>nul | findstr "LISTENING" | findstr ":5000 " >nul 2>nul
         if not errorlevel 1 (
             set "ready=1"
             goto :server_ready
@@ -55,7 +55,7 @@ if %ERRORLEVEL% equ 0 (
     )
     :server_ready
     if defined ready (
-        echo [OK] Server is running on http://localhost:3000
+        echo [OK] Server is running on http://localhost:5000
     ) else (
         echo [WARNING] Server may not have started. Check for errors.
     )
@@ -64,12 +64,12 @@ if %ERRORLEVEL% equ 0 (
 REM ---- Open browser ----
 echo.
 echo Opening PhotoStore in your browser...
-start "" "http://localhost:3000"
+start "" "http://localhost:5000"
 
 echo.
 echo ============================================
 echo  PhotoStore is ready!
-echo  http://localhost:3000
+echo  http://localhost:5000
 echo ============================================
 echo.
 echo  Tips:

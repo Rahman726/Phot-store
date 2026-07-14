@@ -13,6 +13,7 @@ const aiResult = document.getElementById('aiResult');
 const aiGeneratedImage = document.getElementById('aiGeneratedImage');
 const aiDownloadBtn = document.getElementById('aiDownloadBtn');
 const aiCreateNewBtn = document.getElementById('aiCreateNewBtn');
+const aiAddToGalleryBtn = document.getElementById('aiAddToGalleryBtn');
 const aiCharCount = document.getElementById('aiCharCount');
 const aiSuggestions = document.getElementById('aiSuggestions');
 const suggestionChips = document.querySelectorAll('.ai-chip');
@@ -202,4 +203,78 @@ aiCreateNewBtn.addEventListener('click', () => {
     aiAspect.value = '1024x1024';
     aiSuggestions.style.display = '';
     aiPrompt.dispatchEvent(new Event('input'));
+});
+
+// Add to Gallery — save to shared gallery
+function calcAspect(aspect) {
+    if (!aspect) return 'square';
+    const parts = aspect.split('x');
+    if (parts.length === 2) {
+        const w = parseInt(parts[0]), h = parseInt(parts[1]);
+        if (w > h) return 'landscape';
+        if (h > w) return 'portrait';
+    }
+    return 'square';
+}
+
+function addToGalleryAndRender(photoData) {
+    photos.unshift(photoData);
+    const allPhotos = [...photos, ...(window.infinitePhotos || [])];
+    renderGallery(allPhotos);
+}
+
+aiAddToGalleryBtn.addEventListener('click', async function() {
+    if (!currentGeneratedImageUrl) {
+        showToast('No image to add', 'error');
+        return;
+    }
+    
+    const originalText = aiAddToGalleryBtn.textContent;
+    aiAddToGalleryBtn.disabled = true;
+    aiAddToGalleryBtn.textContent = '⏳ Saving...';
+    
+    let artistName = 'AI Artist';
+    if (typeof currentUser !== 'undefined' && currentUser && currentUser.name) {
+        artistName = currentUser.name;
+    }
+    
+    const photoId = Date.now() + Math.floor(Math.random() * 1000);
+    
+    const photoData = {
+        id: photoId,
+        title: lastPrompt || 'AI Generated Image',
+        artist: artistName,
+        category: 'ai',
+        aspect: calcAspect(lastAspect),
+        image: currentGeneratedImageUrl,
+        fullImage: currentGeneratedImageUrl,
+        placeholderColor: '#8e44ad'
+    };
+    
+    try {
+        const response = await fetch('/api/photos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(photoData)
+        });
+        
+        if (response.ok) {
+            addToGalleryAndRender(photoData);
+            showToast('✅ Added to gallery!', 'success');
+        } else {
+            try {
+                const errData = await response.json();
+                showToast(errData.error || 'Failed to save', 'error');
+            } catch(e) {
+                showToast('Server error', 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Add to Gallery error:', error);
+        showToast('Saved locally (offline)', 'info');
+        addToGalleryAndRender(photoData);
+    }
+    
+    aiAddToGalleryBtn.disabled = false;
+    aiAddToGalleryBtn.textContent = originalText;
 });
